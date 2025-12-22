@@ -1,6 +1,5 @@
-# 🎢 Gate Service — Micro-service de contrôle d'accès
-
-Un micro-service Spring Boot démontrant l'utilisation d'un **modèle d'acteurs** pour gérer le contrôle d'accès aux portes d'un parc d'attractions, avec publication d'événements sur **RabbitMQ**.
+#  Gate Service — Micro-service de contrôle d'accès
+Micro-service Spring Boot démontrant l'utilisation d'un **modèle d'acteurs** pour gérer le contrôle d'accès aux portes d'un parc d'attractions, avec publication d'événements sur **RabbitMQ**.
 
 ## 📋 Sommaire
 
@@ -17,9 +16,8 @@ Un micro-service Spring Boot démontrant l'utilisation d'un **modèle d'acteurs*
 
 ---
 
-## 🎯 Contexte du projet
+##  Contexte du projet
 
-Ce projet s'inscrit dans une **formation aux concepts avancés de Spring** :
 
 1. **Micro-services** : Architecture distribuée avec communication asynchrone
 2. **Modèle d'acteurs** : Framework maison pour gérer la concurrence sans locks
@@ -37,7 +35,7 @@ Un visiteur scanne son ticket à une porte du parc :
 
 ---
 
-## 🏗 Architecture
+##  Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -66,7 +64,7 @@ Un visiteur scanne son ticket à une porte du parc :
 
 ---
 
-## 🛠 Technologies
+##  Technologies
 
 | Technologie | Version | Usage |
 |-------------|---------|-------|
@@ -86,7 +84,7 @@ Un visiteur scanne son ticket à une porte du parc :
 src/main/java/com/park/
 ├── GateServiceApplication.java      # Point d'entrée
 │
-├── actor/                           # 🎭 FRAMEWORK D'ACTEURS
+├── actor/                           #  FRAMEWORK D'ACTEURS
 │   ├── core/                        # Interfaces publiques
 │   │   ├── Actor.java              # Contrat d'un acteur
 │   │   ├── ActorRef.java           # Référence vers un acteur
@@ -98,7 +96,7 @@ src/main/java/com/park/
 │       ├── ActorRuntime.java       # Gestionnaire du cycle de vie
 │       └── LocalActorRef.java      # Implémentation locale avec mailbox
 │
-└── gate/                            # 🚪 DOMAINE GATE
+└── gate/                            #  DOMAINE GATE
     ├── domain/                      # Logique métier
     │   ├── GateActor.java          # Acteur d'une porte
     │   ├── ScanTicket.java         # Message de scan
@@ -117,16 +115,17 @@ src/main/java/com/park/
 
 ---
 
-## 🚀 Installation et lancement
+##  Installation et lancement
 
 ### Prérequis
 
 - **Java 21** (JDK)
 - **Docker** (pour RabbitMQ)
-- **Maven** (ou utiliser le wrapper `./mvnw`)
+- **Maven 3.9+** (ou utiliser le wrapper `./mvnw`)
 
 ### 1. Lancer RabbitMQ
 
+**Option A : Docker run**
 ```bash
 docker run -d --name rabbitmq \
   -p 5672:5672 \
@@ -134,17 +133,62 @@ docker run -d --name rabbitmq \
   rabbitmq:3-management
 ```
 
+**Option B : Docker Compose**
+```bash
+docker compose up -d
+```
+
 Console web : http://localhost:15672 (login: `guest` / `guest`)
 
 ### 2. Lancer l'application
 
+####  macOS /  Linux
+
 ```bash
-# Avec Maven
+# Avec le wrapper Maven (recommandé)
 ./mvnw spring-boot:run
 
+# Ou si Maven est installé globalement
+mvn spring-boot:run
+
 # Ou compiler puis exécuter
-./mvnw clean package
+./mvnw clean package -DskipTests
 java -jar target/gate-service-1.0.0-SNAPSHOT.jar
+```
+
+> **Note macOS** : Si vous obtenez `permission denied`, exécutez d'abord :
+> ```bash
+> chmod +x mvnw
+> ```
+
+#### 🪟 Windows (PowerShell ou CMD)
+
+```powershell
+# Avec le wrapper Maven
+.\mvnw.cmd spring-boot:run
+
+# Ou si Maven est installé globalement
+mvn spring-boot:run
+```
+
+####  Alternative : Maven global
+
+Si vous n'avez pas le wrapper, installez Maven :
+
+```bash
+# macOS
+brew install maven
+
+# Ubuntu/Debian
+sudo apt install maven
+
+# Windows (avec Chocolatey)
+choco install maven
+```
+
+Puis lancez :
+```bash
+mvn spring-boot:run
 ```
 
 L'application démarre sur **http://localhost:8081**
@@ -155,9 +199,14 @@ L'application démarre sur **http://localhost:8081**
 curl http://localhost:8081/actuator/health
 ```
 
+Réponse attendue :
+```json
+{"status":"UP"}
+```
+
 ---
 
-## 📡 Utilisation de l'API
+##  Utilisation de l'API
 
 ### Scanner un ticket
 
@@ -194,7 +243,7 @@ curl http://localhost:8081/gate/G1/status
 
 ---
 
-## 🐰 Observer les événements (RabbitMQ)
+##  Observer les événements (RabbitMQ)
 
 1. Ouvrir la console RabbitMQ : http://localhost:15672
 2. Aller dans **Queues and Streams**
@@ -212,12 +261,19 @@ curl http://localhost:8081/gate/G1/status
 
 ---
 
-## ✅ Tests
+##  Tests
 
 ### Lancer tous les tests
 
 ```bash
+# macOS/Linux
 ./mvnw test
+
+# Windows
+.\mvnw.cmd test
+
+# Ou avec Maven global
+mvn test
 ```
 
 ### Tests disponibles
@@ -228,16 +284,9 @@ curl http://localhost:8081/gate/G1/status
 | `ActorRuntimeTest` | Unitaire | Framework d'acteurs |
 | `GateIntegrationTest` | Intégration | API + messaging (TestBinder) |
 
-### Couverture
-
-```bash
-./mvnw test jacoco:report
-# Rapport dans target/site/jacoco/index.html
-```
-
 ---
 
-## 💡 Concepts clés
+##  Concepts clés
 
 ### Modèle d'acteurs
 
@@ -299,15 +348,48 @@ streamBridge.send("gateEvents-out-0", event);
 
 ---
 
-## 📚 Ressources
+##  Troubleshooting
+
+### `zsh: no such file or directory: ./mvnw`
+
+Le script wrapper n'existe pas ou n'est pas exécutable :
+```bash
+chmod +x mvnw   # Rendre exécutable
+# Ou utiliser Maven directement
+mvn spring-boot:run
+```
+
+### `Connection refused` sur RabbitMQ
+
+Vérifier que RabbitMQ tourne :
+```bash
+docker ps | grep rabbit
+# Si non listé, relancer :
+docker start rabbitmq
+```
+
+### Erreur de compilation Java 21
+
+Vérifier la version Java :
+```bash
+java -version
+# Doit afficher "21" ou supérieur
+```
+
+Sur macOS avec Homebrew :
+```bash
+brew install openjdk@21
+export JAVA_HOME=$(/usr/libexec/java_home -v 21)
+```
+
+---
+
+##  Ressources
 
 - [Spring Cloud Stream Reference](https://docs.spring.io/spring-cloud-stream/docs/current/reference/html/)
 - [RabbitMQ Tutorials](https://www.rabbitmq.com/tutorials)
 - [Actor Model (Wikipedia)](https://en.wikipedia.org/wiki/Actor_model)
 - [Virtual Threads (JEP 444)](https://openjdk.org/jeps/444)
 
----
 
-## 📄 Licence
 
-Projet de formation — Usage libre pour apprentissage.

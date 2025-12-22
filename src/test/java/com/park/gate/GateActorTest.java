@@ -29,8 +29,8 @@ class GateActorTest {
     void setUp() {
         publishedEvents = new ArrayList<>();
         
-        // Mock du publisher
-        GateEventPublisher mockPublisher = event -> publishedEvents.add(event);
+        // Mock du publisher avec une classe anonyme
+        GateEventPublisher mockPublisher = new MockGateEventPublisher(publishedEvents);
         
         gateActor = new GateActor("G1", mockPublisher);
         context = new TestActorContext("G1");
@@ -87,6 +87,23 @@ class GateActorTest {
     }
     
     // === Test doubles ===
+    
+    /**
+     * Mock du GateEventPublisher pour capturer les événements publiés.
+     */
+    static class MockGateEventPublisher extends GateEventPublisher {
+        private final List<VisitorEntered> events;
+        
+        MockGateEventPublisher(List<VisitorEntered> events) {
+            super(null); // StreamBridge non utilisé dans les tests
+            this.events = events;
+        }
+        
+        @Override
+        public void publish(VisitorEntered event) {
+            events.add(event);
+        }
+    }
     
     static class TestActorContext implements ActorContext {
         private final String id;
