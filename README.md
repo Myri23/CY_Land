@@ -78,7 +78,7 @@ Un visiteur scanne son ticket à une porte du parc :
 
 ---
 
-## 📁 Structure du code
+##  Structure du code
 
 ```
 src/main/java/com/park/
@@ -326,7 +326,7 @@ streamBridge.send("gateEvents-out-0", event);
 
 ---
 
-## 🔮 Évolutions possibles
+##  Évolutions possibles
 
 ### Court terme
 
