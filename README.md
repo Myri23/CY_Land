@@ -1,405 +1,762 @@
 # 🎢 Gate Service — Micro-service de contrôle d'accès
 
-Un micro-service Spring Boot démontrant l'utilisation d'un **modèle d'acteurs** pour gérer le contrôle d'accès aux portes d'un parc d'attractions, avec publication d'événements sur **RabbitMQ**.
-
-## 📋 Sommaire
-
-- [Contexte du projet](#-contexte-du-projet)
-- [Architecture](#-architecture)
-- [Technologies](#-technologies)
-- [Structure du code](#-structure-du-code)
-- [Installation et lancement](#-installation-et-lancement)
-- [Utilisation de l'API](#-utilisation-de-lapi)
-- [Observer les événements](#-observer-les-événements-rabbitmq)
-- [Tests](#-tests)
-- [Concepts clés](#-concepts-clés)
-- [Évolutions possibles](#-évolutions-possibles)
+Micro-service Spring Boot démontrant l'utilisation d'un **modèle d'acteurs** pour gérer le contrôle d'accès aux portes d'un parc d'attractions, avec **persistance PostgreSQL** et publication d'événements sur **RabbitMQ**.
 
 ---
 
-## 🎯 Contexte du projet
+## 📋 Sommaire
 
-Ce projet s'inscrit dans une **formation aux concepts avancés de Spring** :
+1. [Fonctionnalités](#-fonctionnalités)
+2. [Architecture](#-architecture)
+3. [Prérequis](#-prérequis)
+4. [Installation et Lancement](#-installation-et-lancement)
+   - [Mac M1 2020](#-mac-m1-2020-terminal-vscode)
+   - [Windows 10/11](#-windows-1011-terminal-vscode)
+5. [Guide de Test Complet](#-guide-de-test-complet)
+6. [Tests Automatisés](#-tests-automatisés)
+7. [Structure du Projet](#-structure-du-projet)
+8. [Troubleshooting](#-troubleshooting)
 
-1. **Micro-services** : Architecture distribuée avec communication asynchrone
-2. **Modèle d'acteurs** : Framework maison pour gérer la concurrence sans locks
-3. **Messaging** : Publication d'événements via Spring Cloud Stream + RabbitMQ
-4. **Résilience** : Base pour implémenter Circuit Breaker, Retry, etc.
+---
 
-### Cas d'usage
+## ✨ Fonctionnalités
 
-Un visiteur scanne son ticket à une porte du parc :
-1. L'API REST reçoit la requête
-2. Un message est envoyé à l'acteur de la porte concernée
-3. L'acteur vérifie si le ticket a déjà été scanné (anti-doublon)
-4. Si valide, un événement `VisitorEntered` est publié sur RabbitMQ
-5. D'autres services peuvent consommer cet événement (analytics, notifications, etc.)
+### 🚪 Fonctionnalités de base (modèle d'acteurs)
+
+| Fonctionnalité | Description | Endpoint |
+|----------------|-------------|----------|
+| **Scan de ticket** | Scanner un ticket à une porte (traitement asynchrone via acteur) | `POST /gate/{gateId}/scan?ticketId=XXX` |
+| **Anti-doublon** | Un ticket ne peut entrer qu'une seule fois | Géré par l'acteur |
+| **Publication événements** | Publie `VisitorEntered` sur RabbitMQ | Automatique après scan |
+| **Status porte** | Vérifier qu'une porte est opérationnelle | `GET /gate/{gateId}/status` |
+
+### 🆕 Nouvelles fonctionnalités (CRUD + PostgreSQL)
+
+| Fonctionnalité | Description | Endpoint |
+|----------------|-------------|----------|
+| **Liste des portes** | Afficher toutes les portes configurées | `GET /admin/gates` |
+| **Créer une porte** | Ajouter une nouvelle porte | `POST /admin/gates?gateId=...&name=...&type=...` |
+| **Modifier une porte** | Changer le nom ou le type d'une porte | `PUT /admin/gates/{gateId}?name=...&type=...` |
+| **Supprimer une porte** | Retirer une porte du système | `DELETE /admin/gates/{gateId}` |
+| **Liste des tickets** | Afficher tous les tickets | `GET /admin/tickets` |
+| **Créer un ticket** | Émettre un nouveau ticket | `POST /admin/tickets?ticketId=...&type=...&dateValidity=...&priceCents=...` |
+| **Supprimer un ticket** | Annuler un ticket | `DELETE /admin/tickets/{ticketId}` |
+| **Tickets valides aujourd'hui** | Liste des tickets utilisables aujourd'hui | `GET /admin/tickets/valid-today` |
+| **Valider un ticket** | Vérifier si un ticket peut accéder à une porte | `GET /admin/tickets/{ticketId}/validate?gateType=...` |
+
+### Types de portes disponibles
+- `MAIN_GATE` — Entrée principale (tickets classiques et VIP)
+- `VIP_GATE` — Entrée VIP (tickets VIP uniquement)
+- `SERVICE_GATE` — Entrée de service
+- `EMERGENCY_EXIT` — Sortie de secours
+
+### Types de tickets disponibles
+- `CLASSIC_TICKET` — Accès aux portes principales uniquement
+- `VIP_TICKET` — Accès à toutes les portes
+
+### Catégories d'âge
+- `ADULT`, `YOUNG`, `CHILD`, `SENIOR`
 
 ---
 
 ## 🏗 Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        GATE SERVICE                              │
-│  ┌──────────┐    ┌─────────────┐    ┌─────────────────────────┐ │
-│  │   REST   │───▶│  GateService │───▶│     Actor Runtime       │ │
-│  │   API    │    │             │    │  ┌───────┐ ┌───────┐   │ │
-│  │ (8081)   │    └─────────────┘    │  │Gate G1│ │Gate G2│   │ │
-│  └──────────┘                       │  │ Actor │ │ Actor │   │ │
-│                                     │  └───┬───┘ └───┬───┘   │ │
-│                                     └──────┼─────────┼───────┘ │
-│                                            │         │         │
-│                                     ┌──────▼─────────▼───────┐ │
-│                                     │   GateEventPublisher   │ │
-│                                     │   (Spring Cloud Stream)│ │
-│                                     └───────────┬────────────┘ │
-└─────────────────────────────────────────────────┼───────────────┘
-                                                  │
-                                                  ▼
-                                     ┌────────────────────────┐
-                                     │       RabbitMQ         │
-                                     │  Exchange: park.events │
-                                     │  RoutingKey: gate.*    │
-                                     └────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                         GATE SERVICE                                 │
+│                                                                      │
+│  ┌──────────────┐    ┌─────────────┐    ┌───────────────────────┐   │
+│  │  REST API    │───▶│ GateService │───▶│    Actor Runtime      │   │
+│  │              │    │             │    │  ┌─────┐ ┌─────┐      │   │
+│  │ /gate/scan   │    └─────────────┘    │  │ G1  │ │ G2  │ ...  │   │
+│  │ /admin/gates │                       │  │Actor│ │Actor│      │   │
+│  │ /admin/ticket│                       │  └──┬──┘ └──┬──┘      │   │
+│  └──────────────┘                       └─────┼───────┼─────────┘   │
+│         │                                     │       │             │
+│         │                              ┌──────▼───────▼──────┐      │
+│         │                              │  GateEventPublisher │      │
+│         │                              │ (Spring Cloud Stream)│      │
+│         │                              └──────────┬──────────┘      │
+│         │                                         │                 │
+│  ┌──────▼──────────────────┐                      │                 │
+│  │      PostgreSQL         │                      │                 │
+│  │  ┌────────┐ ┌────────┐  │                      │                 │
+│  │  │ Gates  │ │Tickets │  │                      │                 │
+│  │  └────────┘ └────────┘  │                      │                 │
+│  └─────────────────────────┘                      │                 │
+└───────────────────────────────────────────────────┼─────────────────┘
+                                                    │
+                                                    ▼
+                                       ┌────────────────────────┐
+                                       │       RabbitMQ         │
+                                       │  Exchange: park.events │
+                                       └────────────────────────┘
 ```
 
 ---
 
-## 🛠 Technologies
+## 📦 Prérequis
 
-| Technologie | Version | Usage |
-|-------------|---------|-------|
-| Java | 21 | Langage (Virtual Threads) |
-| Spring Boot | 3.5.x | Framework applicatif |
-| Spring Cloud Stream | 2024.0.0 | Abstraction messaging |
-| RabbitMQ | 3.x | Broker de messages |
-| JUnit 5 | 5.x | Tests unitaires |
-| Testcontainers | 1.20.x | Tests d'intégration |
-| Maven | 3.9.x | Build |
+| Outil | Version | Vérification |
+|-------|---------|--------------|
+| Java JDK | 21+ | `java -version` |
+| Docker Desktop | Dernière | `docker --version` |
+| Git | Dernière | `git --version` |
+| VSCode | Dernière | — |
 
 ---
 
-## 📁 Structure du code
+## 🚀 Installation et Lancement
 
-```
-src/main/java/com/park/
-├── GateServiceApplication.java      # Point d'entrée
-│
-├── actor/                           # 🎭 FRAMEWORK D'ACTEURS
-│   ├── core/                        # Interfaces publiques
-│   │   ├── Actor.java              # Contrat d'un acteur
-│   │   ├── ActorRef.java           # Référence vers un acteur
-│   │   ├── ActorContext.java       # Contexte d'exécution
-│   │   ├── ActorFactory.java       # Factory fonctionnelle
-│   │   └── Message.java            # Interface marqueur
-│   │
-│   └── runtime/                     # Implémentation
-│       ├── ActorRuntime.java       # Gestionnaire du cycle de vie
-│       └── LocalActorRef.java      # Implémentation locale avec mailbox
-│
-└── gate/                            # 🚪 DOMAINE GATE
-    ├── domain/                      # Logique métier
-    │   ├── GateActor.java          # Acteur d'une porte
-    │   ├── ScanTicket.java         # Message de scan
-    │   └── VisitorEntered.java     # Événement publié
-    │
-    ├── api/                         # Couche API
-    │   ├── GateController.java     # REST endpoints
-    │   └── GateService.java        # Service applicatif
-    │
-    ├── config/                      # Configuration Spring
-    │   └── GateConfiguration.java  # Initialisation des portes
-    │
-    └── messaging/                   # Publication événements
-        └── GateEventPublisher.java # Pont vers RabbitMQ
-```
+### 🍎 Mac M1 2020 (Terminal VSCode)
 
----
+#### Étape 1 : Ouvrir le terminal dans VSCode
 
-## 🚀 Installation et lancement
+1. Ouvrir VSCode
+2. `Fichier` → `Ouvrir le dossier...` → Sélectionner le dossier `gate-service`
+3. Ouvrir le terminal : `Terminal` → `Nouveau terminal` (ou `Ctrl+ù`)
 
-### Prérequis
+#### Étape 2 : Vérifier Java 21
 
-- **Java 21** (JDK)
-- **Docker** (pour RabbitMQ)
-- **Maven 3.9+** (ou utiliser le wrapper `./mvnw`)
-
-### 1. Lancer RabbitMQ
-
-**Option A : Docker run**
 ```bash
-docker run -d --name rabbitmq \
-  -p 5672:5672 \
-  -p 15672:15672 \
-  rabbitmq:3-management
+java -version
 ```
 
-**Option B : Docker Compose**
+**Résultat attendu :**
+```
+openjdk version "21.0.x" 2024-xx-xx
+OpenJDK Runtime Environment ...
+```
+
+**Si Java 21 n'est pas installé :**
 ```bash
+# Installer Homebrew si nécessaire
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Installer Java 21
+brew install openjdk@21
+
+# Configurer JAVA_HOME
+echo 'export JAVA_HOME=$(/usr/libexec/java_home -v 21)' >> ~/.zshrc
+echo 'export PATH="$JAVA_HOME/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+
+# Vérifier
+java -version
+```
+
+#### Étape 3 : Lancer Docker Desktop
+
+1. Ouvrir l'application **Docker Desktop**
+2. Attendre que le statut soit "Running" (icône verte)
+
+#### Étape 4 : Lancer les services (RabbitMQ + PostgreSQL)
+
+```bash
+# Dans le terminal VSCode, depuis le dossier gate-service
 docker compose up -d
+
+# Vérifier que les containers tournent
+docker ps
 ```
 
-Console web : http://localhost:15672 (login: `guest` / `guest`)
+**Résultat attendu :**
+```
+CONTAINER ID   IMAGE                   STATUS          PORTS
+xxxx           rabbitmq:3-management   Up 10 seconds   5672->5672, 15672->15672
+xxxx           postgres:16-alpine      Up 10 seconds   5432->5432
+```
 
-### 2. Lancer l'application
-
-#### 🍎 macOS / 🐧 Linux
+#### Étape 5 : Rendre le script Maven exécutable
 
 ```bash
-# Avec le wrapper Maven (recommandé)
-./mvnw spring-boot:run
-
-# Ou si Maven est installé globalement
-mvn spring-boot:run
-
-# Ou compiler puis exécuter
-./mvnw clean package -DskipTests
-java -jar target/gate-service-1.0.0-SNAPSHOT.jar
+chmod +x mvnw
 ```
 
-> **Note macOS** : Si vous obtenez `permission denied`, exécutez d'abord :
-> ```bash
-> chmod +x mvnw
-> ```
+#### Étape 6 : Lancer l'application
 
-#### 🪟 Windows (PowerShell ou CMD)
+**Option A : Mode local (H2 en mémoire, recommandé pour commencer)**
+```bash
+./mvnw spring-boot:run
+```
+
+**Option B : Mode PostgreSQL (avec la base de données Docker)**
+```bash
+./mvnw spring-boot:run -Dspring.profiles.active=postgresql
+```
+
+**Résultat attendu :**
+```
+===========================================
+  GATE SERVICE READY
+  Portes actives: 3
+  
+  SCAN ENDPOINTS:
+  - POST /gate/{gateId}/scan?ticketId=XXX
+  - GET  /gate/{gateId}/status
+  
+  ADMIN ENDPOINTS:
+  - GET/POST/DELETE /admin/gates
+  - GET/POST/DELETE /admin/tickets
+===========================================
+```
+
+---
+
+### 🪟 Windows 10/11 (Terminal VSCode)
+
+#### Étape 1 : Ouvrir le terminal dans VSCode
+
+1. Ouvrir VSCode
+2. `Fichier` → `Ouvrir le dossier...` → Sélectionner le dossier `gate-service`
+3. Ouvrir le terminal : `Terminal` → `Nouveau terminal` (ou `Ctrl+ù`)
+4. **Important** : S'assurer que le terminal est en **PowerShell** (pas CMD)
+   - Cliquer sur la flèche à côté du `+` dans le terminal
+   - Sélectionner `PowerShell`
+
+#### Étape 2 : Vérifier Java 21
 
 ```powershell
-# Avec le wrapper Maven
+java -version
+```
+
+**Résultat attendu :**
+```
+openjdk version "21.0.x" 2024-xx-xx
+OpenJDK Runtime Environment ...
+```
+
+**Si Java 21 n'est pas installé :**
+
+1. Télécharger depuis : https://adoptium.net/temurin/releases/?version=21
+2. Installer le `.msi` pour Windows x64
+3. **Redémarrer VSCode**
+4. Vérifier avec `java -version`
+
+**Configurer JAVA_HOME (si nécessaire) :**
+```powershell
+# Trouver le chemin Java
+where java
+
+# Définir JAVA_HOME (adapter le chemin)
+$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.x.x-hotspot"
+```
+
+#### Étape 3 : Lancer Docker Desktop
+
+1. Ouvrir l'application **Docker Desktop**
+2. Attendre que le statut soit "Running" (icône verte en bas à gauche)
+
+#### Étape 4 : Lancer les services (RabbitMQ + PostgreSQL)
+
+```powershell
+# Dans le terminal VSCode PowerShell, depuis le dossier gate-service
+docker compose up -d
+
+# Vérifier que les containers tournent
+docker ps
+```
+
+**Résultat attendu :**
+```
+CONTAINER ID   IMAGE                   STATUS          PORTS
+xxxx           rabbitmq:3-management   Up 10 seconds   5672->5672, 15672->15672
+xxxx           postgres:16-alpine      Up 10 seconds   5432->5432
+```
+
+#### Étape 5 : Lancer l'application
+
+**Option A : Mode local (H2 en mémoire, recommandé pour commencer)**
+```powershell
 .\mvnw.cmd spring-boot:run
-
-# Ou si Maven est installé globalement
-mvn spring-boot:run
 ```
 
-#### 💻 Alternative : Maven global
-
-Si vous n'avez pas le wrapper, installez Maven :
-
-```bash
-# macOS
-brew install maven
-
-# Ubuntu/Debian
-sudo apt install maven
-
-# Windows (avec Chocolatey)
-choco install maven
+**Option B : Mode PostgreSQL (avec la base de données Docker)**
+```powershell
+.\mvnw.cmd spring-boot:run -D"spring.profiles.active=postgresql"
 ```
 
-Puis lancez :
-```bash
-mvn spring-boot:run
+**Résultat attendu :**
+```
+===========================================
+  GATE SERVICE READY
+  Portes actives: 3
+  
+  SCAN ENDPOINTS:
+  - POST /gate/{gateId}/scan?ticketId=XXX
+  - GET  /gate/{gateId}/status
+  
+  ADMIN ENDPOINTS:
+  - GET/POST/DELETE /admin/gates
+  - GET/POST/DELETE /admin/tickets
+===========================================
 ```
 
-L'application démarre sur **http://localhost:8081**
+---
 
-### 3. Vérifier le démarrage
+## 🧪 Guide de Test Complet
+
+> **Important** : Ouvrir un **nouveau terminal** dans VSCode pour tester (garder l'application qui tourne dans le premier terminal).
+
+### 📍 Tests sur Mac M1 (Terminal VSCode)
+
+#### Test 1 : Vérifier que l'application tourne
 
 ```bash
 curl http://localhost:8081/actuator/health
 ```
 
-Réponse attendue :
+**Résultat attendu :**
 ```json
 {"status":"UP"}
 ```
 
 ---
 
-## 📡 Utilisation de l'API
-
-### Scanner un ticket
+#### Test 2 : Lister les portes par défaut
 
 ```bash
-# Scanner le ticket T001 à la porte G1
-curl -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
+curl http://localhost:8081/admin/gates
 ```
 
-**Réponse (202 Accepted)** :
+**Résultat attendu :**
 ```json
-{
-  "status": "SCAN_ACCEPTED",
-  "gateId": "G1",
-  "ticketId": "T001"
-}
-```
-
-### Tester l'anti-doublon
-
-```bash
-# macOS/Linux
-# Premier scan : accepté
-curl -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
-
-# Deuxième scan du même ticket : accepté côté HTTP (202),
-# mais l'acteur ne publie PAS de nouvel événement
-curl -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
-
-# Windows
-# Premier scan : accepté
-curl.exe -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
-
-# Deuxième scan du même ticket : accepté côté HTTP (202),
-# mais l'acteur ne publie PAS de nouvel événement
-curl.exe -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
-```
-
-### Status d'une porte
-
-```bash
-curl http://localhost:8081/gate/G1/status
+[
+  {"id":1,"gateId":"G1","name":"Entrée Principale","type":"MAIN_GATE",...},
+  {"id":2,"gateId":"G2","name":"Entrée Secondaire","type":"MAIN_GATE",...},
+  {"id":3,"gateId":"VIP","name":"Entrée VIP","type":"VIP_GATE",...}
+]
 ```
 
 ---
 
-## 🐰 Observer les événements (RabbitMQ)
+#### Test 3 : Créer une nouvelle porte
 
-1. Ouvrir la console RabbitMQ : http://localhost:15672
-2. Aller dans **Queues and Streams**
-3. Chercher la queue `park.events.analytics` (créée automatiquement)
-4. Cliquer sur **Get Message(s)** pour voir les événements
+```bash
+curl -X POST "http://localhost:8081/admin/gates?gateId=G3&name=Entrée%20Nord&type=MAIN_GATE"
+```
 
-**Format des événements** :
+**Résultat attendu :**
 ```json
-{
-  "ticketId": "T001",
-  "gateId": "G1",
-  "timestamp": "2025-01-15T10:30:00Z"
-}
+{"status":"SUCCESS","message":"Gate G3 created successfully"}
 ```
 
 ---
 
-## ✅ Tests
-
-### Lancer tous les tests
+#### Test 4 : Créer un ticket valide aujourd'hui
 
 ```bash
-# macOS/Linux
+# Remplacer la date par aujourd'hui au format YYYY-MM-DD
+curl -X POST "http://localhost:8081/admin/tickets?ticketId=T001&type=CLASSIC_TICKET&ageCategory=ADULT&dateValidity=$(date +%Y-%m-%d)&priceCents=8500"
+```
+
+**Résultat attendu :**
+```json
+{"status":"SUCCESS","message":"Ticket created successfully","ticketId":"T001"}
+```
+
+---
+
+#### Test 5 : Lister les tickets
+
+```bash
+curl http://localhost:8081/admin/tickets
+```
+
+**Résultat attendu :**
+```json
+[{"id":1,"ticketId":"T001","type":"CLASSIC_TICKET","ageCategory":"ADULT",...}]
+```
+
+---
+
+#### Test 6 : Vérifier la validité d'un ticket
+
+```bash
+curl "http://localhost:8081/admin/tickets/T001/validate?gateType=MAIN_GATE"
+```
+
+**Résultat attendu :**
+```json
+{"valid":true,"reason":"","ticketType":"CLASSIC_TICKET"}
+```
+
+---
+
+#### Test 7 : Scanner un ticket à une porte
+
+```bash
+curl -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
+```
+
+**Résultat attendu :**
+```json
+{"status":"SCAN_ACCEPTED","gateId":"G1","ticketId":"T001"}
+```
+
+**Dans le terminal de l'application, vous verrez :**
+```
+[GATE G1] Ticket T001 ACCEPTÉ - Visiteur entré
+[PUBLISH] VisitorEntered: ticket=T001, gate=G1
+```
+
+---
+
+#### Test 8 : Tester l'anti-doublon (re-scanner le même ticket)
+
+```bash
+curl -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
+```
+
+**Résultat attendu :** La requête HTTP retourne toujours 202, mais dans les logs :
+```
+[GATE G1] Ticket T001 déjà scanné dans cette session - REJETÉ
+```
+
+---
+
+#### Test 9 : Vérifier que le ticket est maintenant utilisé
+
+```bash
+curl "http://localhost:8081/admin/tickets/T001/validate?gateType=MAIN_GATE"
+```
+
+**Résultat attendu :**
+```json
+{"valid":false,"reason":"Ticket already used at G1","ticketType":"CLASSIC_TICKET"}
+```
+
+---
+
+#### Test 10 : Créer un ticket VIP et accéder à la porte VIP
+
+```bash
+# Créer un ticket VIP
+curl -X POST "http://localhost:8081/admin/tickets?ticketId=VIP001&type=VIP_TICKET&ageCategory=ADULT&dateValidity=$(date +%Y-%m-%d)&priceCents=15000"
+
+# Vérifier qu'il peut accéder à VIP_GATE
+curl "http://localhost:8081/admin/tickets/VIP001/validate?gateType=VIP_GATE"
+
+# Scanner à la porte VIP
+curl -X POST "http://localhost:8081/gate/VIP/scan?ticketId=VIP001"
+```
+
+---
+
+#### Test 11 : Tester qu'un ticket classique ne peut pas accéder à VIP
+
+```bash
+# Créer un ticket classique
+curl -X POST "http://localhost:8081/admin/tickets?ticketId=T002&type=CLASSIC_TICKET&ageCategory=ADULT&dateValidity=$(date +%Y-%m-%d)&priceCents=8500"
+
+# Vérifier qu'il NE peut PAS accéder à VIP_GATE
+curl "http://localhost:8081/admin/tickets/T002/validate?gateType=VIP_GATE"
+```
+
+**Résultat attendu :**
+```json
+{"valid":false,"reason":"Ticket type CLASSIC_TICKET cannot access VIP_GATE","ticketType":"CLASSIC_TICKET"}
+```
+
+---
+
+#### Test 12 : Supprimer une porte
+
+```bash
+curl -X DELETE "http://localhost:8081/admin/gates/G3"
+```
+
+**Résultat attendu :**
+```json
+{"status":"SUCCESS","message":"Gate G3 deleted successfully"}
+```
+
+---
+
+#### Test 13 : Observer les événements dans RabbitMQ
+
+1. Ouvrir un navigateur : http://localhost:15672
+2. Login : `guest` / `guest`
+3. Aller dans `Queues and Streams`
+4. Cliquer sur `park.events.analytics`
+5. Section `Get messages` → Cliquer sur `Get Message(s)`
+
+**Vous verrez les événements JSON :**
+```json
+{"ticketId":"T001","gateId":"G1","timestamp":"2025-01-15T10:30:00Z"}
+```
+
+---
+
+### 📍 Tests sur Windows 10/11 (PowerShell VSCode)
+
+> **Note** : Sur Windows, utiliser `Invoke-RestMethod` ou `curl.exe`
+
+#### Test 1 : Vérifier que l'application tourne
+
+```powershell
+Invoke-RestMethod http://localhost:8081/actuator/health
+```
+
+**ou avec curl.exe :**
+```powershell
+curl.exe http://localhost:8081/actuator/health
+```
+
+---
+
+#### Test 2 : Lister les portes
+
+```powershell
+Invoke-RestMethod http://localhost:8081/admin/gates | ConvertTo-Json
+```
+
+**ou :**
+```powershell
+curl.exe http://localhost:8081/admin/gates
+```
+
+---
+
+#### Test 3 : Créer une porte
+
+```powershell
+Invoke-RestMethod -Method Post "http://localhost:8081/admin/gates?gateId=G3&name=Entree%20Nord&type=MAIN_GATE"
+```
+
+**ou :**
+```powershell
+curl.exe -X POST "http://localhost:8081/admin/gates?gateId=G3&name=Entree%20Nord&type=MAIN_GATE"
+```
+
+---
+
+#### Test 4 : Créer un ticket valide aujourd'hui
+
+```powershell
+# Obtenir la date du jour
+$today = Get-Date -Format "yyyy-MM-dd"
+
+# Créer le ticket
+Invoke-RestMethod -Method Post "http://localhost:8081/admin/tickets?ticketId=T001&type=CLASSIC_TICKET&ageCategory=ADULT&dateValidity=$today&priceCents=8500"
+```
+
+**ou :**
+```powershell
+curl.exe -X POST "http://localhost:8081/admin/tickets?ticketId=T001&type=CLASSIC_TICKET&ageCategory=ADULT&dateValidity=2025-01-15&priceCents=8500"
+```
+
+---
+
+#### Test 5 : Lister les tickets
+
+```powershell
+Invoke-RestMethod http://localhost:8081/admin/tickets | ConvertTo-Json
+```
+
+---
+
+#### Test 6 : Valider un ticket
+
+```powershell
+Invoke-RestMethod "http://localhost:8081/admin/tickets/T001/validate?gateType=MAIN_GATE"
+```
+
+---
+
+#### Test 7 : Scanner un ticket
+
+```powershell
+Invoke-RestMethod -Method Post "http://localhost:8081/gate/G1/scan?ticketId=T001"
+```
+
+**ou :**
+```powershell
+curl.exe -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
+```
+
+---
+
+#### Test 8 : Scanner le même ticket (test anti-doublon)
+
+```powershell
+Invoke-RestMethod -Method Post "http://localhost:8081/gate/G1/scan?ticketId=T001"
+```
+
+**Regarder les logs dans le premier terminal — le ticket sera rejeté.**
+
+---
+
+#### Test 9 : Créer et tester un ticket VIP
+
+```powershell
+$today = Get-Date -Format "yyyy-MM-dd"
+
+# Créer ticket VIP
+Invoke-RestMethod -Method Post "http://localhost:8081/admin/tickets?ticketId=VIP001&type=VIP_TICKET&ageCategory=ADULT&dateValidity=$today&priceCents=15000"
+
+# Valider pour VIP_GATE
+Invoke-RestMethod "http://localhost:8081/admin/tickets/VIP001/validate?gateType=VIP_GATE"
+
+# Scanner à la porte VIP
+Invoke-RestMethod -Method Post "http://localhost:8081/gate/VIP/scan?ticketId=VIP001"
+```
+
+---
+
+#### Test 10 : Supprimer une porte
+
+```powershell
+Invoke-RestMethod -Method Delete "http://localhost:8081/admin/gates/G3"
+```
+
+---
+
+## ✅ Tests Automatisés
+
+### Lancer tous les tests unitaires et d'intégration
+
+**Mac M1 :**
+```bash
 ./mvnw test
+```
 
-# Windows
+**Windows :**
+```powershell
 .\mvnw.cmd test
-
-# Ou avec Maven global
-mvn test
 ```
 
-### Tests disponibles
+### Description des tests
 
-| Classe | Type | Description |
-|--------|------|-------------|
-| `GateActorTest` | Unitaire | Logique métier de l'acteur |
-| `ActorRuntimeTest` | Unitaire | Framework d'acteurs |
-| `GateIntegrationTest` | Intégration | API + messaging (TestBinder) |
+| Fichier | Type | Ce qu'il teste |
+|---------|------|----------------|
+| `GateActorTest.java` | Unitaire | Logique métier de l'acteur : acceptation ticket, anti-doublon, snapshot |
+| `ActorRuntimeTest.java` | Unitaire | Framework d'acteurs : création, lookup, traitement FIFO des messages |
+| `GateIntegrationTest.java` | Intégration | Flux complet HTTP → Acteur → Publication événement |
 
----
+### Résultat attendu
 
-## 💡 Concepts clés
-
-### Modèle d'acteurs
-
-Un **acteur** est une entité qui :
-- Possède un **état privé** (pas d'accès concurrent)
-- Communique uniquement par **messages** (pas d'appels directs)
-- Traite les messages **séquentiellement** (une mailbox par acteur)
-
-```java
-public interface Actor {
-    void onReceive(Message message, ActorContext context);
-}
 ```
-
-**Avantages** :
-- Pas de locks explicites
-- Isolation naturelle de l'état
-- Facilité de distribution (acteurs distants)
-
-### Virtual Threads (Java 21)
-
-Le runtime utilise les **Virtual Threads** pour un modèle "un thread par acteur" sans coût mémoire prohibitif :
-
-```java
-ExecutorService executor = Executors.newThreadPerTaskExecutor(
-    Thread.ofVirtual().name("actor-", 0).factory()
-);
-```
-
-### Spring Cloud Stream
-
-Abstraction pour le messaging qui permet de changer de broker (RabbitMQ, Kafka, etc.) sans modifier le code applicatif :
-
-```java
-streamBridge.send("gateEvents-out-0", event);
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
 ```
 
 ---
 
-## 🔮 Évolutions possibles
+## 📁 Structure du Projet
 
-### Court terme
-
-- [ ] **Persistance des snapshots** : Sauvegarder l'état des acteurs (Redis, PostgreSQL)
-- [ ] **Acteurs distants** : Communication inter-services via RabbitMQ
-- [ ] **Circuit Breaker** : Resilience4j sur les appels externes
-
-### Moyen terme
-
-- [ ] **Deuxième micro-service** : Service de comptage/analytics
-- [ ] **Supervision** : Hiérarchie d'acteurs avec stratégies de reprise
-- [ ] **Clustering** : Distribution des acteurs sur plusieurs instances
-
-### Long terme
-
-- [ ] **Event Sourcing** : Reconstituer l'état à partir des événements
-- [ ] **CQRS** : Séparer lectures et écritures
-- [ ] **Saga Pattern** : Transactions distribuées
+```
+gate-service/
+├── src/main/java/com/park/
+│   ├── GateServiceApplication.java       # Point d'entrée
+│   │
+│   ├── actor/                            # 🎭 FRAMEWORK D'ACTEURS
+│   │   ├── core/                         # Interfaces
+│   │   │   ├── Actor.java
+│   │   │   ├── ActorRef.java
+│   │   │   ├── ActorContext.java
+│   │   │   ├── ActorFactory.java
+│   │   │   └── Message.java
+│   │   └── runtime/                      # Implémentation
+│   │       ├── ActorRuntime.java         # Gestionnaire du cycle de vie
+│   │       └── LocalActorRef.java        # Mailbox + thread virtuel
+│   │
+│   └── gate/                             # 🚪 DOMAINE MÉTIER
+│       ├── api/                          # REST Controllers
+│       │   ├── GateController.java       # POST /gate/{id}/scan
+│       │   ├── GateAdminController.java  # CRUD /admin/gates
+│       │   ├── TicketAdminController.java# CRUD /admin/tickets
+│       │   └── GateService.java
+│       ├── config/
+│       │   └── GateConfiguration.java    # Initialisation au démarrage
+│       ├── domain/
+│       │   ├── GateActor.java            # Logique de la porte
+│       │   ├── ScanTicket.java           # Message de scan
+│       │   └── VisitorEntered.java       # Événement publié
+│       ├── messaging/
+│       │   └── GateEventPublisher.java   # Publication RabbitMQ
+│       └── persistence/                  # 💾 JPA / PostgreSQL
+│           ├── GateEntity.java
+│           ├── GateRepository.java
+│           ├── GateType.java
+│           ├── TicketEntity.java
+│           ├── TicketRepository.java
+│           ├── TicketType.java
+│           └── TicketAgeCategory.java
+│
+├── src/main/resources/
+│   └── application.yml                   # Config multi-profils
+│
+├── src/test/java/com/park/gate/
+│   ├── GateActorTest.java
+│   ├── ActorRuntimeTest.java
+│   └── GateIntegrationTest.java
+│
+├── docker-compose.yml                    # RabbitMQ + PostgreSQL
+├── pom.xml
+├── mvnw                                  # Maven wrapper Unix
+└── mvnw.cmd                              # Maven wrapper Windows
+```
 
 ---
 
-## 🛠 Troubleshooting
+## 🔧 Troubleshooting
 
-### `zsh: no such file or directory: ./mvnw`
+### ❌ `zsh: permission denied: ./mvnw` (Mac)
 
-Le script wrapper n'existe pas ou n'est pas exécutable :
 ```bash
-chmod +x mvnw   # Rendre exécutable
-# Ou utiliser Maven directement
-mvn spring-boot:run
+chmod +x mvnw
 ```
 
-### `Connection refused` sur RabbitMQ
+### ❌ `JAVA_HOME not found` (Windows)
 
-Vérifier que RabbitMQ tourne :
+1. Vérifier que Java 21 est installé : `java -version`
+2. Si non, télécharger depuis https://adoptium.net/
+3. Redémarrer VSCode après l'installation
+
+### ❌ `Connection refused` sur port 5672 ou 5432
+
 ```bash
-docker ps | grep rabbit
-# Si non listé, relancer :
-docker start rabbitmq
+# Vérifier que Docker tourne
+docker ps
+
+# Relancer les services
+docker compose down
+docker compose up -d
 ```
 
-### Erreur de compilation Java 21
+### ❌ `Port 8081 already in use`
 
-Vérifier la version Java :
+**Mac :**
 ```bash
-java -version
-# Doit afficher "21" ou supérieur
+lsof -i :8081
+kill -9 <PID>
 ```
 
-Sur macOS avec Homebrew :
-```bash
-brew install openjdk@21
-export JAVA_HOME=$(/usr/libexec/java_home -v 21)
+**Windows :**
+```powershell
+netstat -ano | findstr :8081
+taskkill /PID <PID> /F
+```
+
+### ❌ Les tests échouent avec `RabbitMQ connection refused`
+
+Les tests utilisent un **TestBinder** qui simule RabbitMQ. Si les tests échouent, vérifier que vous n'avez pas de configuration qui force une connexion réelle.
+
+### ❌ `mvnw.cmd : File cannot be loaded` (Windows)
+
+Exécuter dans PowerShell en mode Administrateur :
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
 ---
 
 ## 📚 Ressources
 
-- [Spring Cloud Stream Reference](https://docs.spring.io/spring-cloud-stream/docs/current/reference/html/)
+- [Spring Cloud Stream](https://docs.spring.io/spring-cloud-stream/docs/current/reference/html/)
+- [Spring Data JPA](https://docs.spring.io/spring-data/jpa/reference/)
 - [RabbitMQ Tutorials](https://www.rabbitmq.com/tutorials)
-- [Actor Model (Wikipedia)](https://en.wikipedia.org/wiki/Actor_model)
 - [Virtual Threads (JEP 444)](https://openjdk.org/jeps/444)
 
 ---
