@@ -229,12 +229,21 @@ curl -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
 ### Tester l'anti-doublon
 
 ```bash
+# macOS/Linux
 # Premier scan : accepté
 curl -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
 
 # Deuxième scan du même ticket : accepté côté HTTP (202),
 # mais l'acteur ne publie PAS de nouvel événement
 curl -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
+
+# Windows
+# Premier scan : accepté
+curl.exe -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
+
+# Deuxième scan du même ticket : accepté côté HTTP (202),
+# mais l'acteur ne publie PAS de nouvel événement
+curl.exe -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
 ```
 
 ### Status d'une porte
