@@ -1,7 +1,8 @@
-#  Gate Service — Micro-service de contrôle d'accès
-Micro-service Spring Boot démontrant l'utilisation d'un **modèle d'acteurs** pour gérer le contrôle d'accès aux portes d'un parc d'attractions, avec publication d'événements sur **RabbitMQ**.
+# 🎢 Gate Service — Micro-service de contrôle d'accès
 
-##  Sommaire
+Un micro-service Spring Boot démontrant l'utilisation d'un **modèle d'acteurs** pour gérer le contrôle d'accès aux portes d'un parc d'attractions, avec publication d'événements sur **RabbitMQ**.
+
+## 📋 Sommaire
 
 - [Contexte du projet](#-contexte-du-projet)
 - [Architecture](#-architecture)
@@ -16,8 +17,9 @@ Micro-service Spring Boot démontrant l'utilisation d'un **modèle d'acteurs** p
 
 ---
 
-## Contexte du projet
+## 🎯 Contexte du projet
 
+Ce projet s'inscrit dans une **formation aux concepts avancés de Spring** :
 
 1. **Micro-services** : Architecture distribuée avec communication asynchrone
 2. **Modèle d'acteurs** : Framework maison pour gérer la concurrence sans locks
@@ -35,7 +37,7 @@ Un visiteur scanne son ticket à une porte du parc :
 
 ---
 
-## Architecture
+## 🏗 Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -64,7 +66,7 @@ Un visiteur scanne son ticket à une porte du parc :
 
 ---
 
-## Technologies
+## 🛠 Technologies
 
 | Technologie | Version | Usage |
 |-------------|---------|-------|
@@ -78,13 +80,13 @@ Un visiteur scanne son ticket à une porte du parc :
 
 ---
 
-## Structure du code
+## 📁 Structure du code
 
 ```
 src/main/java/com/park/
 ├── GateServiceApplication.java      # Point d'entrée
 │
-├── actor/                           #  FRAMEWORK D'ACTEURS
+├── actor/                           # 🎭 FRAMEWORK D'ACTEURS
 │   ├── core/                        # Interfaces publiques
 │   │   ├── Actor.java              # Contrat d'un acteur
 │   │   ├── ActorRef.java           # Référence vers un acteur
@@ -96,7 +98,7 @@ src/main/java/com/park/
 │       ├── ActorRuntime.java       # Gestionnaire du cycle de vie
 │       └── LocalActorRef.java      # Implémentation locale avec mailbox
 │
-└── gate/                            #  DOMAINE GATE
+└── gate/                            # 🚪 DOMAINE GATE
     ├── domain/                      # Logique métier
     │   ├── GateActor.java          # Acteur d'une porte
     │   ├── ScanTicket.java         # Message de scan
@@ -115,7 +117,7 @@ src/main/java/com/park/
 
 ---
 
-## Installation et lancement
+## 🚀 Installation et lancement
 
 ### Prérequis
 
@@ -142,7 +144,7 @@ Console web : http://localhost:15672 (login: `guest` / `guest`)
 
 ### 2. Lancer l'application
 
-####  macOS /  Linux
+#### 🍎 macOS / 🐧 Linux
 
 ```bash
 # Avec le wrapper Maven (recommandé)
@@ -161,7 +163,7 @@ java -jar target/gate-service-1.0.0-SNAPSHOT.jar
 > chmod +x mvnw
 > ```
 
-#### Windows (PowerShell ou CMD)
+#### 🪟 Windows (PowerShell ou CMD)
 
 ```powershell
 # Avec le wrapper Maven
@@ -171,7 +173,7 @@ java -jar target/gate-service-1.0.0-SNAPSHOT.jar
 mvn spring-boot:run
 ```
 
-####  Alternative : Maven global
+#### 💻 Alternative : Maven global
 
 Si vous n'avez pas le wrapper, installez Maven :
 
@@ -206,7 +208,7 @@ Réponse attendue :
 
 ---
 
-##  Utilisation de l'API
+## 📡 Utilisation de l'API
 
 ### Scanner un ticket
 
@@ -243,7 +245,7 @@ curl http://localhost:8081/gate/G1/status
 
 ---
 
-##  Observer les événements (RabbitMQ)
+## 🐰 Observer les événements (RabbitMQ)
 
 1. Ouvrir la console RabbitMQ : http://localhost:15672
 2. Aller dans **Queues and Streams**
@@ -261,7 +263,7 @@ curl http://localhost:8081/gate/G1/status
 
 ---
 
-##  Tests
+## ✅ Tests
 
 ### Lancer tous les tests
 
@@ -286,7 +288,7 @@ mvn test
 
 ---
 
-##  Concepts clés
+## 💡 Concepts clés
 
 ### Modèle d'acteurs
 
@@ -326,7 +328,7 @@ streamBridge.send("gateEvents-out-0", event);
 
 ---
 
-##  Évolutions possibles
+## 🔮 Évolutions possibles
 
 ### Court terme
 
@@ -348,7 +350,7 @@ streamBridge.send("gateEvents-out-0", event);
 
 ---
 
-##  Troubleshooting
+## 🛠 Troubleshooting
 
 ### `zsh: no such file or directory: ./mvnw`
 
@@ -384,12 +386,15 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 21)
 
 ---
 
-##  Ressources
+## 📚 Ressources
 
 - [Spring Cloud Stream Reference](https://docs.spring.io/spring-cloud-stream/docs/current/reference/html/)
 - [RabbitMQ Tutorials](https://www.rabbitmq.com/tutorials)
 - [Actor Model (Wikipedia)](https://en.wikipedia.org/wiki/Actor_model)
 - [Virtual Threads (JEP 444)](https://openjdk.org/jeps/444)
 
+---
 
+## 📄 Licence
 
+Projet de formation — Usage libre pour apprentissage.
