@@ -1,7 +1,7 @@
 #  Gate Service — Micro-service de contrôle d'accès
 Micro-service Spring Boot démontrant l'utilisation d'un **modèle d'acteurs** pour gérer le contrôle d'accès aux portes d'un parc d'attractions, avec publication d'événements sur **RabbitMQ**.
 
-## 📋 Sommaire
+##  Sommaire
 
 - [Contexte du projet](#-contexte-du-projet)
 - [Architecture](#-architecture)
@@ -16,7 +16,7 @@ Micro-service Spring Boot démontrant l'utilisation d'un **modèle d'acteurs** p
 
 ---
 
-##  Contexte du projet
+## Contexte du projet
 
 
 1. **Micro-services** : Architecture distribuée avec communication asynchrone
@@ -35,7 +35,7 @@ Un visiteur scanne son ticket à une porte du parc :
 
 ---
 
-##  Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -64,7 +64,7 @@ Un visiteur scanne son ticket à une porte du parc :
 
 ---
 
-##  Technologies
+## Technologies
 
 | Technologie | Version | Usage |
 |-------------|---------|-------|
@@ -78,7 +78,7 @@ Un visiteur scanne son ticket à une porte du parc :
 
 ---
 
-##  Structure du code
+## Structure du code
 
 ```
 src/main/java/com/park/
@@ -115,7 +115,7 @@ src/main/java/com/park/
 
 ---
 
-##  Installation et lancement
+## Installation et lancement
 
 ### Prérequis
 
@@ -161,7 +161,7 @@ java -jar target/gate-service-1.0.0-SNAPSHOT.jar
 > chmod +x mvnw
 > ```
 
-#### 🪟 Windows (PowerShell ou CMD)
+#### Windows (PowerShell ou CMD)
 
 ```powershell
 # Avec le wrapper Maven
