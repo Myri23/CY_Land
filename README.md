@@ -1,6 +1,6 @@
-# Gate Service - Micro-service de controle d'acces
+# CY_Land - Microservices du Parc d'Attractions
 
-Micro-service Spring Boot demontrant l'utilisation d'un **modele d'acteurs** pour gerer le controle d'acces aux portes d'un parc d'attractions, avec publication d'evenements sur **RabbitMQ**.
+Application Spring Boot combinant deux microservices pour la gestion d'un parc d'attractions : le controle d'acces (**Gate Service**) et la gestion des attractions (**Ride Service**), utilisant un **modele d'acteurs** et **RabbitMQ**.
 
 ---
 
@@ -19,79 +19,85 @@ Micro-service Spring Boot demontrant l'utilisation d'un **modele d'acteurs** pou
 
 ## Fonctionnalites
 
-### Fonctionnalites de base (modele d'acteurs)
+### Gate Service - Controle d'acces
 
 | Fonctionnalite | Description | Endpoint |
 |----------------|-------------|----------|
-| **Scan de ticket** | Scanner un ticket a une porte (traitement asynchrone via acteur) | `POST /gate/{gateId}/scan?ticketId=XXX` |
+| **Scan de ticket** | Scanner un ticket a une porte | `POST /gate/{gateId}/scan?ticketId=XXX` |
 | **Anti-doublon** | Un ticket ne peut entrer qu'une seule fois | Gere par l'acteur |
-| **Publication evenements** | Publie `VisitorEntered` sur RabbitMQ | Automatique apres scan |
+| **Publication evenements** | Publie `VisitorEntered` sur RabbitMQ | Automatique |
 | **Status porte** | Verifier qu'une porte est operationnelle | `GET /gate/{gateId}/status` |
+| **CRUD Portes** | Gestion des portes | `GET/POST/PUT/DELETE /admin/gates` |
+| **CRUD Tickets** | Gestion des tickets | `GET/POST/DELETE /admin/tickets` |
 
-### Fonctionnalites d'administration (CRUD)
+### Ride Service - Gestion des attractions
 
 | Fonctionnalite | Description | Endpoint |
 |----------------|-------------|----------|
-| **Liste des portes** | Afficher toutes les portes configurees | `GET /admin/gates` |
-| **Creer une porte** | Ajouter une nouvelle porte | `POST /admin/gates?gateId=...&name=...&type=...` |
-| **Modifier une porte** | Changer le nom ou le type d'une porte | `PUT /admin/gates/{gateId}?name=...&type=...` |
-| **Supprimer une porte** | Retirer une porte du systeme | `DELETE /admin/gates/{gateId}` |
-| **Liste des tickets** | Afficher tous les tickets | `GET /admin/tickets` |
-| **Creer un ticket** | Emettre un nouveau ticket | `POST /admin/tickets?ticketId=...&type=...&dateValidity=...&priceCents=...` |
-| **Supprimer un ticket** | Annuler un ticket | `DELETE /admin/tickets/{ticketId}` |
-| **Tickets valides aujourd'hui** | Liste des tickets utilisables aujourd'hui | `GET /admin/tickets/valid-today` |
-| **Valider un ticket** | Verifier si un ticket peut acceder a une porte | `GET /admin/tickets/{ticketId}/validate?gateType=...` |
+| **Liste attractions** | Voir toutes les attractions | `GET /rides` |
+| **Etat attraction** | Queue, passagers en cycle, etc. | `GET /rides/{rideId}/state` |
+| **Rejoindre queue** | Ajouter un visiteur a la file | `POST /rides/{rideId}/join?ticketId=XXX` |
+| **Demarrer cycle** | Lancer manuellement un cycle | `POST /rides/{rideId}/start-cycle` |
+| **Signaler panne** | Reporter un probleme | `POST /rides/{rideId}/report-fault` |
 
-### Types de portes disponibles
+### Attractions disponibles
 
-- `MAIN_GATE` - Entree principale (tickets classiques et VIP)
-- `VIP_GATE` - Entree VIP (tickets VIP uniquement)
+| ID | Nom | Capacite | Duree cycle |
+|----|-----|----------|-------------|
+| `rc` | RollerCoaster (Montagnes Russes) | 20 passagers | 60 secondes |
+| `gr` | GrandeRoue | 12 passagers | 120 secondes |
+| `vr` | SimulateurVR | 8 passagers | 180 secondes |
+
+### Types de portes
+
+- `MAIN_GATE` - Entree principale
+- `VIP_GATE` - Entree VIP
 - `SERVICE_GATE` - Entree de service
 - `EMERGENCY_EXIT` - Sortie de secours
 
-### Types de tickets disponibles
+### Types de tickets
 
-- `CLASSIC_TICKET` - Acces aux portes principales uniquement
-- `VIP_TICKET` - Acces a toutes les portes
-
-### Categories d'age
-
-- `ADULT`, `YOUNG`, `CHILD`, `SENIOR`
+- `CLASSIC_TICKET` - Acces portes principales
+- `VIP_TICKET` - Acces toutes portes
 
 ---
 
 ## Architecture
 
 ```
-+---------------------------------------------------------------------+
-|                         GATE SERVICE                                 |
-|                                                                      |
-|  +--------------+    +-------------+    +-----------------------+   |
-|  |  REST API    |--->| GateService |--->|    Actor Runtime      |   |
-|  |              |    |             |    |  +-----+ +-----+      |   |
-|  | /gate/scan   |    +-------------+    |  | G1  | | G2  | ...  |   |
-|  | /admin/gates |                       |  |Actor| |Actor|      |   |
-|  | /admin/ticket|                       |  +--+--+ +--+--+      |   |
-|  +--------------+                       +-----+-------+----------+   |
-|         |                                     |       |             |
-|         |                              +------v-------v------+      |
-|         |                              |  GateEventPublisher |      |
-|         |                              | (Spring Cloud Stream)|      |
-|         |                              +----------+----------+      |
-|         |                                         |                 |
-|  +------v------------------+                      |                 |
-|  |   In-Memory Storage     |                      |                 |
-|  |  +--------+ +--------+  |                      |                 |
-|  |  | Gates  | |Tickets |  |                      |                 |
-|  |  +--------+ +--------+  |                      |                 |
-|  +-------------------------+                      |                 |
-+---------------------------------------------------+-----------------+
-                                                    |
-                                                    v
-                                       +------------------------+
-                                       |       RabbitMQ         |
-                                       |  Exchange: park.events |
-                                       +------------------------+
++-------------------------------------------------------------------------+
+|                         CY_LAND PARK SERVICE                             |
+|                                                                          |
+|  +---------------------------+    +---------------------------+          |
+|  |      GATE SERVICE         |    |      RIDE SERVICE         |          |
+|  |                           |    |                           |          |
+|  |  /gate/scan               |    |  /rides                   |          |
+|  |  /admin/gates             |    |  /rides/{id}/join         |          |
+|  |  /admin/tickets           |    |  /rides/{id}/start-cycle  |          |
+|  +------------+--------------+    +------------+--------------+          |
+|               |                                |                         |
+|               v                                v                         |
+|  +---------------------------+    +---------------------------+          |
+|  |     Actor Runtime         |    |      RideService          |          |
+|  |  +-------+ +-------+      |    |  +----+ +----+ +----+     |          |
+|  |  |  G1   | |  G2   | ...  |    |  | RC | | GR | | VR |     |          |
+|  |  | Actor | | Actor |      |    |  +----+ +----+ +----+     |          |
+|  |  +-------+ +-------+      |    |     RideActors            |          |
+|  +------------+--------------+    +---------------------------+          |
+|               |                                                          |
+|               v                                                          |
+|  +---------------------------+                                           |
+|  |    GateEventPublisher     |                                           |
+|  |   (Spring Cloud Stream)   |                                           |
+|  +------------+--------------+                                           |
+|               |                                                          |
++---------------+----------------------------------------------------------+
+                |
+                v
+   +------------------------+
+   |       RabbitMQ         |
+   |  Exchange: park.events |
+   +------------------------+
 ```
 
 ---
@@ -208,29 +214,37 @@ Resultat attendu : container `park-rabbitmq` en status "Up"
 ### Resultat attendu au demarrage
 
 ```
-===========================================
-  GATE SERVICE READY
+###############################################
+#         CY_LAND PARK SERVICE READY          #
+###############################################
+
+  GATE SERVICE
   Portes actives: 3
+  Endpoints:
+    POST /gate/{gateId}/scan?ticketId=XXX
+    GET  /gate/{gateId}/status
+    GET/POST/PUT/DELETE /admin/gates
+    GET/POST/DELETE /admin/tickets
 
-  SCAN ENDPOINTS:
-  - POST /gate/{gateId}/scan?ticketId=XXX
-  - GET  /gate/{gateId}/status
+  RIDE SERVICE
+  Attractions actives: 3
+  Endpoints:
+    GET  /rides
+    GET  /rides/{rideId}/state
+    POST /rides/{rideId}/join?ticketId=XXX
+    POST /rides/{rideId}/start-cycle
+    POST /rides/{rideId}/report-fault
 
-  ADMIN ENDPOINTS:
-  - GET/POST/PUT/DELETE /admin/gates
-  - GET/POST/DELETE /admin/tickets
-  - GET /admin/tickets/valid-today
-  - GET /admin/tickets/{id}/validate?gateType=XXX
-===========================================
+###############################################
 ```
 
 ---
 
 ## Guide de Test Complet
 
-Ouvrir un **nouveau terminal** dans VSCode pour tester (garder l'application qui tourne dans le premier terminal).
+Ouvrir un **nouveau terminal** dans VSCode pour tester.
 
-### Tests sur Mac / Linux
+### Tests Gate Service - Mac / Linux
 
 #### Test 1 : Verifier que l'application tourne
 
@@ -238,128 +252,95 @@ Ouvrir un **nouveau terminal** dans VSCode pour tester (garder l'application qui
 curl http://localhost:8081/actuator/health
 ```
 
-Resultat attendu :
-```json
-{"status":"UP"}
-```
-
-#### Test 2 : Lister les portes par defaut
+#### Test 2 : Lister les portes
 
 ```bash
 curl http://localhost:8081/admin/gates
 ```
 
-Resultat attendu : liste de 3 portes (G1, G2, VIP)
-
-#### Test 3 : Creer une nouvelle porte
-
-```bash
-curl -X POST "http://localhost:8081/admin/gates?gateId=G3&name=Entree%20Nord&type=MAIN_GATE"
-```
-
-Resultat attendu :
-```json
-{"status":"SUCCESS","message":"Gate G3 created successfully"}
-```
-
-#### Test 4 : Creer un ticket valide aujourd'hui
+#### Test 3 : Creer un ticket
 
 ```bash
 curl -X POST "http://localhost:8081/admin/tickets?ticketId=T001&type=CLASSIC_TICKET&ageCategory=ADULT&dateValidity=$(date +%Y-%m-%d)&priceCents=8500"
 ```
 
-Resultat attendu :
-```json
-{"status":"SUCCESS","message":"Ticket created successfully","ticketId":"T001"}
-```
-
-#### Test 5 : Lister les tickets
-
-```bash
-curl http://localhost:8081/admin/tickets
-```
-
-#### Test 6 : Verifier la validite d'un ticket
-
-```bash
-curl "http://localhost:8081/admin/tickets/T001/validate?gateType=MAIN_GATE"
-```
-
-Resultat attendu :
-```json
-{"valid":true,"reason":"","ticketType":"CLASSIC_TICKET"}
-```
-
-#### Test 7 : Scanner un ticket a une porte
+#### Test 4 : Scanner un ticket
 
 ```bash
 curl -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
 ```
 
-Resultat attendu :
-```json
-{"status":"SCAN_ACCEPTED","gateId":"G1","ticketId":"T001"}
-```
-
-Dans le terminal de l'application :
-```
-[GATE G1] Ticket T001 ACCEPTE - Visiteur entre
-[PUBLISH] VisitorEntered: ticket=T001, gate=G1
-```
-
-#### Test 8 : Tester l'anti-doublon
+#### Test 5 : Tester l'anti-doublon
 
 ```bash
 curl -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
 ```
-
-Dans les logs : `[GATE G1] Ticket T001 deja scanne - REJETE`
-
-#### Test 9 : Creer et tester un ticket VIP
-
-```bash
-# Creer ticket VIP
-curl -X POST "http://localhost:8081/admin/tickets?ticketId=VIP001&type=VIP_TICKET&ageCategory=ADULT&dateValidity=$(date +%Y-%m-%d)&priceCents=15000"
-
-# Valider pour VIP_GATE
-curl "http://localhost:8081/admin/tickets/VIP001/validate?gateType=VIP_GATE"
-
-# Scanner a la porte VIP
-curl -X POST "http://localhost:8081/gate/VIP/scan?ticketId=VIP001"
-```
-
-#### Test 10 : Tester qu'un ticket classique ne peut pas acceder a VIP
-
-```bash
-# Creer un ticket classique
-curl -X POST "http://localhost:8081/admin/tickets?ticketId=T002&type=CLASSIC_TICKET&ageCategory=ADULT&dateValidity=$(date +%Y-%m-%d)&priceCents=8500"
-
-# Verifier qu'il NE peut PAS acceder a VIP_GATE
-curl "http://localhost:8081/admin/tickets/T002/validate?gateType=VIP_GATE"
-```
-
-Resultat attendu :
-```json
-{"valid":false,"reason":"Ticket type CLASSIC_TICKET cannot access VIP_GATE","ticketType":"CLASSIC_TICKET"}
-```
-
-#### Test 11 : Supprimer une porte
-
-```bash
-curl -X DELETE "http://localhost:8081/admin/gates/G3"
-```
-
-#### Test 12 : Observer les evenements dans RabbitMQ
-
-1. Ouvrir un navigateur : http://localhost:15672
-2. Login : `guest` / `guest`
-3. Aller dans `Queues and Streams`
-4. Cliquer sur `park.events.analytics`
-5. Section `Get messages` > Cliquer sur `Get Message(s)`
 
 ---
 
-### Tests sur Windows (PowerShell)
+### Tests Ride Service - Mac / Linux
+
+#### Test 6 : Lister les attractions
+
+```bash
+curl http://localhost:8081/rides
+```
+
+Resultat attendu :
+```json
+["rc","gr","vr"]
+```
+
+#### Test 7 : Voir l'etat d'une attraction
+
+```bash
+curl http://localhost:8081/rides/rc/state
+```
+
+Resultat attendu :
+```json
+{"rideId":"RC","queueSize":0,"inCycle":[],"capacity":20,"cycleDurationSec":60,"closed":false}
+```
+
+#### Test 8 : Ajouter des visiteurs a la queue
+
+```bash
+curl -X POST "http://localhost:8081/rides/rc/join?ticketId=V001"
+curl -X POST "http://localhost:8081/rides/rc/join?ticketId=V002"
+curl -X POST "http://localhost:8081/rides/rc/join?ticketId=V003"
+```
+
+#### Test 9 : Verifier la queue
+
+```bash
+curl http://localhost:8081/rides/rc/state
+```
+
+Resultat attendu : `"queueSize":3`
+
+#### Test 10 : Demarrer un cycle manuellement
+
+```bash
+curl -X POST "http://localhost:8081/rides/rc/start-cycle"
+```
+
+#### Test 11 : Signaler une panne
+
+```bash
+curl -X POST "http://localhost:8081/rides/gr/report-fault?faultType=MECHANICAL&description=Moteur%20en%20panne"
+```
+
+#### Test 12 : Verifier que l'attraction est fermee
+
+```bash
+curl http://localhost:8081/rides/gr/state
+```
+
+Resultat attendu : `"closed":true`
+
+---
+
+### Tests Gate Service - Windows (PowerShell)
 
 #### Test 1 : Verifier que l'application tourne
 
@@ -373,64 +354,53 @@ curl.exe http://localhost:8081/actuator/health
 curl.exe http://localhost:8081/admin/gates
 ```
 
-#### Test 3 : Creer une porte
-
-```powershell
-curl.exe -X POST "http://localhost:8081/admin/gates?gateId=G3&name=Entree%20Nord&type=MAIN_GATE"
-```
-
-#### Test 4 : Creer un ticket valide aujourd'hui
+#### Test 3 : Creer un ticket
 
 ```powershell
 $today = Get-Date -Format "yyyy-MM-dd"
 curl.exe -X POST "http://localhost:8081/admin/tickets?ticketId=T001&type=CLASSIC_TICKET&ageCategory=ADULT&dateValidity=$today&priceCents=8500"
 ```
 
-#### Test 5 : Lister les tickets
-
-```powershell
-curl.exe http://localhost:8081/admin/tickets
-```
-
-#### Test 6 : Valider un ticket
-
-```powershell
-curl.exe "http://localhost:8081/admin/tickets/T001/validate?gateType=MAIN_GATE"
-```
-
-#### Test 7 : Scanner un ticket
+#### Test 4 : Scanner un ticket
 
 ```powershell
 curl.exe -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
 ```
 
-#### Test 8 : Scanner le meme ticket (test anti-doublon)
+---
+
+### Tests Ride Service - Windows (PowerShell)
+
+#### Test 5 : Lister les attractions
 
 ```powershell
-curl.exe -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
+curl.exe http://localhost:8081/rides
 ```
 
-Regarder les logs dans le premier terminal - le ticket sera rejete.
-
-#### Test 9 : Creer et tester un ticket VIP
+#### Test 6 : Voir l'etat d'une attraction
 
 ```powershell
-$today = Get-Date -Format "yyyy-MM-dd"
-
-# Creer ticket VIP
-curl.exe -X POST "http://localhost:8081/admin/tickets?ticketId=VIP001&type=VIP_TICKET&ageCategory=ADULT&dateValidity=$today&priceCents=15000"
-
-# Valider pour VIP_GATE
-curl.exe "http://localhost:8081/admin/tickets/VIP001/validate?gateType=VIP_GATE"
-
-# Scanner a la porte VIP
-curl.exe -X POST "http://localhost:8081/gate/VIP/scan?ticketId=VIP001"
+curl.exe http://localhost:8081/rides/rc/state
 ```
 
-#### Test 10 : Supprimer une porte
+#### Test 7 : Ajouter des visiteurs a la queue
 
 ```powershell
-curl.exe -X DELETE "http://localhost:8081/admin/gates/G3"
+curl.exe -X POST "http://localhost:8081/rides/rc/join?ticketId=V001"
+curl.exe -X POST "http://localhost:8081/rides/rc/join?ticketId=V002"
+curl.exe -X POST "http://localhost:8081/rides/rc/join?ticketId=V003"
+```
+
+#### Test 8 : Demarrer un cycle
+
+```powershell
+curl.exe -X POST "http://localhost:8081/rides/rc/start-cycle"
+```
+
+#### Test 9 : Signaler une panne
+
+```powershell
+curl.exe -X POST "http://localhost:8081/rides/gr/report-fault?faultType=MECHANICAL&description=Moteur%20en%20panne"
 ```
 
 ---
@@ -453,9 +423,9 @@ Windows :
 
 | Fichier | Type | Ce qu'il teste |
 |---------|------|----------------|
-| `GateActorTest.java` | Unitaire | Logique metier de l'acteur : acceptation ticket, anti-doublon, snapshot |
-| `ActorRuntimeTest.java` | Unitaire | Framework d'acteurs : creation, lookup, traitement FIFO des messages |
-| `GateIntegrationTest.java` | Integration | Flux complet HTTP > Acteur > Publication evenement |
+| `GateActorTest.java` | Unitaire | Logique de l'acteur Gate |
+| `ActorRuntimeTest.java` | Unitaire | Framework d'acteurs |
+| `GateIntegrationTest.java` | Integration | Flux HTTP > Acteur > Event |
 
 ### Resultat attendu
 
@@ -471,55 +441,76 @@ Windows :
 ```
 gate-service/
 |-- src/main/java/com/park/
-|   |-- GateServiceApplication.java       # Point d'entree
+|   |-- GateServiceApplication.java
 |   |
 |   |-- actor/                            # FRAMEWORK D'ACTEURS
-|   |   |-- core/                         # Interfaces
+|   |   |-- core/
 |   |   |   |-- Actor.java
 |   |   |   |-- ActorRef.java
 |   |   |   |-- ActorContext.java
 |   |   |   |-- ActorFactory.java
 |   |   |   +-- Message.java
-|   |   +-- runtime/                      # Implementation
-|   |       |-- ActorRuntime.java         # Gestionnaire du cycle de vie
-|   |       +-- LocalActorRef.java        # Mailbox + thread virtuel
+|   |   +-- runtime/
+|   |       |-- ActorRuntime.java
+|   |       +-- LocalActorRef.java
 |   |
-|   +-- gate/                             # DOMAINE METIER
-|       |-- api/                          # REST Controllers
-|       |   |-- GateController.java       # POST /gate/{id}/scan
-|       |   |-- GateAdminController.java  # CRUD /admin/gates
-|       |   |-- TicketAdminController.java# CRUD /admin/tickets
-|       |   |-- GateService.java
-|       |   +-- GlobalExceptionHandler.java
-|       |-- config/
-|       |   +-- GateConfiguration.java    # Initialisation au demarrage
-|       |-- domain/
-|       |   |-- GateActor.java            # Logique de la porte
-|       |   |-- ScanTicket.java           # Message de scan
-|       |   +-- VisitorEntered.java       # Evenement publie
+|   |-- gate/                             # GATE SERVICE
+|   |   |-- api/
+|   |   |   |-- GateController.java
+|   |   |   |-- GateAdminController.java
+|   |   |   |-- TicketAdminController.java
+|   |   |   |-- GateService.java
+|   |   |   +-- GlobalExceptionHandler.java
+|   |   |-- config/
+|   |   |   +-- GateConfiguration.java
+|   |   |-- domain/
+|   |   |   |-- GateActor.java
+|   |   |   |-- ScanTicket.java
+|   |   |   +-- VisitorEntered.java
+|   |   |-- messaging/
+|   |   |   +-- GateEventPublisher.java
+|   |   +-- persistence/
+|   |       |-- GateEntity.java
+|   |       |-- GateRepository.java
+|   |       |-- GateType.java
+|   |       |-- TicketEntity.java
+|   |       |-- TicketRepository.java
+|   |       |-- TicketType.java
+|   |       +-- TicketAgeCategory.java
+|   |
+|   +-- ride/                             # RIDE SERVICE
+|       |-- actor/
+|       |   |-- RideActor.java
+|       |   |-- RollerCoaster.java
+|       |   |-- GrandeRoue.java
+|       |   +-- SimulateurVR.java
+|       |-- api/
+|       |   +-- RideController.java
 |       |-- messaging/
-|       |   +-- GateEventPublisher.java   # Publication RabbitMQ
-|       +-- persistence/                  # Stockage en memoire
-|           |-- GateEntity.java
-|           |-- GateRepository.java
-|           |-- GateType.java
-|           |-- TicketEntity.java
-|           |-- TicketRepository.java
-|           |-- TicketType.java
-|           +-- TicketAgeCategory.java
+|       |   |-- in/
+|       |   |   |-- JoinQueue.java
+|       |   |   |-- StartCycle.java
+|       |   |   |-- CycleTick.java
+|       |   |   +-- ReportFault.java
+|       |   +-- out/
+|       |       |-- CycleStarted.java
+|       |       |-- CycleFinished.java
+|       |       +-- QueueUpdated.java
+|       +-- service/
+|           +-- RideService.java
 |
 |-- src/main/resources/
-|   +-- application.yml                   # Configuration
+|   +-- application.yml
 |
 |-- src/test/java/com/park/gate/
 |   |-- GateActorTest.java
 |   |-- ActorRuntimeTest.java
 |   +-- GateIntegrationTest.java
 |
-|-- docker-compose.yml                    # RabbitMQ
+|-- docker-compose.yml
 |-- pom.xml
-|-- mvnw                                  # Maven wrapper Unix
-+-- mvnw.cmd                              # Maven wrapper Windows
+|-- mvnw
++-- mvnw.cmd
 ```
 
 ---
@@ -541,10 +532,7 @@ chmod +x mvnw
 ### `Connection refused` sur port 5672
 
 ```bash
-# Verifier que Docker tourne
 docker ps
-
-# Relancer les services
 docker compose down
 docker compose up -d
 ```
@@ -565,10 +553,16 @@ taskkill /PID <PID> /F
 
 ### `mvnw.cmd : File cannot be loaded` (Windows)
 
-Executer dans PowerShell en mode Administrateur :
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
+
+### Attraction non trouvee (404)
+
+Verifiez que vous utilisez le bon ID en minuscules :
+- `rc` pour RollerCoaster
+- `gr` pour GrandeRoue  
+- `vr` pour SimulateurVR
 
 ---
 
