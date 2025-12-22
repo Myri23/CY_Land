@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: gate-service
+
+  # Configuration RabbitMQ via Spring Cloud Stream
+  cloud:
+    stream:
+      default-binder: rabbit
+      bindings:
+        # Binding de sortie pour les événements
+        gateEvents-out-0:
+          destination: park.events
+          content-type: application/json
+          producer:
+            required-groups:
+              - analytics
+              - logging
+
+      rabbit:
+        bindings:
+          gateEvents-out-0:
+            producer:
+              routing-key-expression: "'gate.visitor.entered'"
+
+  # Configuration RabbitMQ
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+# Port du service
+server:
+  port: 8081
+
+# Actuator pour monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+  endpoint:
+    health:
+      show-details: always
+
+# Logging
+logging:
+  level:
+    com.park: DEBUG
+    org.springframework.cloud.stream: INFO
