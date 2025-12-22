@@ -1,4 +1,4 @@
-# 🎢 Gate Service — Micro-service de contrôle d'accès
+#  Gate Service — Micro-service de contrôle d'accès
 
 Micro-service Spring Boot démontrant l'utilisation d'un **modèle d'acteurs** pour gérer le contrôle d'accès aux portes d'un parc d'attractions, avec **persistance PostgreSQL** et publication d'événements sur **RabbitMQ**.
 
@@ -19,9 +19,9 @@ Micro-service Spring Boot démontrant l'utilisation d'un **modèle d'acteurs** p
 
 ---
 
-## ✨ Fonctionnalités
+##  Fonctionnalités
 
-### 🚪 Fonctionnalités de base (modèle d'acteurs)
+###  Fonctionnalités de base (modèle d'acteurs)
 
 | Fonctionnalité | Description | Endpoint |
 |----------------|-------------|----------|
@@ -30,7 +30,7 @@ Micro-service Spring Boot démontrant l'utilisation d'un **modèle d'acteurs** p
 | **Publication événements** | Publie `VisitorEntered` sur RabbitMQ | Automatique après scan |
 | **Status porte** | Vérifier qu'une porte est opérationnelle | `GET /gate/{gateId}/status` |
 
-### 🆕 Nouvelles fonctionnalités (CRUD + PostgreSQL)
+###  Nouvelles fonctionnalités (CRUD + PostgreSQL)
 
 | Fonctionnalité | Description | Endpoint |
 |----------------|-------------|----------|
@@ -59,7 +59,7 @@ Micro-service Spring Boot démontrant l'utilisation d'un **modèle d'acteurs** p
 
 ---
 
-## 🏗 Architecture
+##  Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -95,7 +95,7 @@ Micro-service Spring Boot démontrant l'utilisation d'un **modèle d'acteurs** p
 
 ---
 
-## 📦 Prérequis
+##  Prérequis
 
 | Outil | Version | Vérification |
 |-------|---------|--------------|
@@ -106,9 +106,9 @@ Micro-service Spring Boot démontrant l'utilisation d'un **modèle d'acteurs** p
 
 ---
 
-## 🚀 Installation et Lancement
+##  Installation et Lancement
 
-### 🍎 Mac M1 2020 (Terminal VSCode)
+###  Mac M1 2020 (Terminal VSCode)
 
 #### Étape 1 : Ouvrir le terminal dans VSCode
 
@@ -203,7 +203,7 @@ chmod +x mvnw
 
 ---
 
-### 🪟 Windows 10/11 (Terminal VSCode)
+###  Windows 10/11 (Terminal VSCode)
 
 #### Étape 1 : Ouvrir le terminal dans VSCode
 
@@ -294,11 +294,11 @@ xxxx           postgres:16-alpine      Up 10 seconds   5432->5432
 
 ---
 
-## 🧪 Guide de Test Complet
+##  Guide de Test Complet
 
 > **Important** : Ouvrir un **nouveau terminal** dans VSCode pour tester (garder l'application qui tourne dans le premier terminal).
 
-### 📍 Tests sur Mac M1 (Terminal VSCode)
+###  Tests sur Mac M1 (Terminal VSCode)
 
 #### Test 1 : Vérifier que l'application tourne
 
@@ -488,7 +488,7 @@ curl -X DELETE "http://localhost:8081/admin/gates/G3"
 
 ---
 
-### 📍 Tests sur Windows 10/11 (PowerShell VSCode)
+###  Tests sur Windows 10/11 (PowerShell VSCode)
 
 > **Note** : Sur Windows, utiliser `Invoke-RestMethod` ou `curl.exe`
 
@@ -612,7 +612,7 @@ Invoke-RestMethod -Method Delete "http://localhost:8081/admin/gates/G3"
 
 ---
 
-## ✅ Tests Automatisés
+##  Tests Automatisés
 
 ### Lancer tous les tests unitaires et d'intégration
 
@@ -643,14 +643,14 @@ Invoke-RestMethod -Method Delete "http://localhost:8081/admin/gates/G3"
 
 ---
 
-## 📁 Structure du Projet
+##  Structure du Projet
 
 ```
 gate-service/
 ├── src/main/java/com/park/
 │   ├── GateServiceApplication.java       # Point d'entrée
 │   │
-│   ├── actor/                            # 🎭 FRAMEWORK D'ACTEURS
+│   ├── actor/                            #  FRAMEWORK D'ACTEURS
 │   │   ├── core/                         # Interfaces
 │   │   │   ├── Actor.java
 │   │   │   ├── ActorRef.java
@@ -661,7 +661,7 @@ gate-service/
 │   │       ├── ActorRuntime.java         # Gestionnaire du cycle de vie
 │   │       └── LocalActorRef.java        # Mailbox + thread virtuel
 │   │
-│   └── gate/                             # 🚪 DOMAINE MÉTIER
+│   └── gate/                             #  DOMAINE MÉTIER
 │       ├── api/                          # REST Controllers
 │       │   ├── GateController.java       # POST /gate/{id}/scan
 │       │   ├── GateAdminController.java  # CRUD /admin/gates
@@ -675,7 +675,7 @@ gate-service/
 │       │   └── VisitorEntered.java       # Événement publié
 │       ├── messaging/
 │       │   └── GateEventPublisher.java   # Publication RabbitMQ
-│       └── persistence/                  # 💾 JPA / PostgreSQL
+│       └── persistence/                  #  JPA / PostgreSQL
 │           ├── GateEntity.java
 │           ├── GateRepository.java
 │           ├── GateType.java
@@ -700,21 +700,21 @@ gate-service/
 
 ---
 
-## 🔧 Troubleshooting
+##  Troubleshooting
 
-### ❌ `zsh: permission denied: ./mvnw` (Mac)
+###  `zsh: permission denied: ./mvnw` (Mac)
 
 ```bash
 chmod +x mvnw
 ```
 
-### ❌ `JAVA_HOME not found` (Windows)
+###  `JAVA_HOME not found` (Windows)
 
 1. Vérifier que Java 21 est installé : `java -version`
 2. Si non, télécharger depuis https://adoptium.net/
 3. Redémarrer VSCode après l'installation
 
-### ❌ `Connection refused` sur port 5672 ou 5432
+###  `Connection refused` sur port 5672 ou 5432
 
 ```bash
 # Vérifier que Docker tourne
@@ -725,7 +725,7 @@ docker compose down
 docker compose up -d
 ```
 
-### ❌ `Port 8081 already in use`
+###  `Port 8081 already in use`
 
 **Mac :**
 ```bash
@@ -739,11 +739,11 @@ netstat -ano | findstr :8081
 taskkill /PID <PID> /F
 ```
 
-### ❌ Les tests échouent avec `RabbitMQ connection refused`
+###  Les tests échouent avec `RabbitMQ connection refused`
 
 Les tests utilisent un **TestBinder** qui simule RabbitMQ. Si les tests échouent, vérifier que vous n'avez pas de configuration qui force une connexion réelle.
 
-### ❌ `mvnw.cmd : File cannot be loaded` (Windows)
+###  `mvnw.cmd : File cannot be loaded` (Windows)
 
 Exécuter dans PowerShell en mode Administrateur :
 ```powershell
@@ -752,15 +752,11 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ---
 
-## 📚 Ressources
+##  Ressources
 
 - [Spring Cloud Stream](https://docs.spring.io/spring-cloud-stream/docs/current/reference/html/)
 - [Spring Data JPA](https://docs.spring.io/spring-data/jpa/reference/)
 - [RabbitMQ Tutorials](https://www.rabbitmq.com/tutorials)
 - [Virtual Threads (JEP 444)](https://openjdk.org/jeps/444)
 
----
 
-## 📄 Licence
-
-Projet de formation — Usage libre pour apprentissage.
