@@ -1,529 +1,271 @@
 # CY Land - Framework d'Acteurs Distribues
 
-Framework d'acteurs distribues inspire d'Akka, developpe avec Spring Boot pour la gestion d'un parc d'attractions.
+Framework d'acteurs distribues inspire d'Akka, developpe avec Spring Boot.
 
 Projet realise dans le cadre du module JEE, ING2 Groupe 1 Equipe 6
 
 ---
 
-## Table des matieres
-
-1. [Presentation du Projet](#presentation-du-projet)
-2. [Conformite aux Exigences](#conformite-aux-exigences)
-3. [Architecture](#architecture)
-4. [Prerequis](#prerequis)
-5. [Installation et Lancement](#installation-et-lancement)
-6. [Guide de Test Complet](#guide-de-test-complet)
-7. [Collection Postman](#collection-postman)
-8. [Tests Automatises](#tests-automatises)
-9. [API Reference](#api-reference)
-10. [Concepts Spring Boot Utilises](#concepts-spring-boot-utilises)
-11. [Structure du Projet](#structure-du-projet)
-12. [Nettoyage du Projet](#nettoyage-du-projet)
-13. [References](#references)
-
----
-
 ## Presentation du Projet
 
-Ce projet implemente un **framework d'acteurs distribues** inspire de la philosophie d'Akka, permettant de creer des applications concurrentes et distribuees basees sur le modele des acteurs.
+Ce projet implemente un framework d'acteurs distribues inspire d'Akka. L'application de demonstration est CY Land, un systeme de gestion de parc d'attractions avec :
 
-L'application de demonstration est **CY Land**, un systeme de gestion de parc d'attractions comprenant :
-
-- **Gate Service** : Gestion des portes d'entree et validation des tickets
-- **Ride Service** : Gestion des attractions et files d'attente
+- Gate Service : Gestion des entrees et validation des tickets
+- Ride Service : Gestion des attractions et files d'attente
 
 ---
 
-## Conformite aux Exigences
+## Conformite au Cahier des Charges
 
-Le tableau ci-dessous montre comment le projet repond a chaque exigence du cahier des charges :
+Le tableau suivant montre comment notre projet repond aux exigences demandees :
 
-| Exigence | Implementation | Localisation |
-|----------|----------------|--------------|
-| Gestion des acteurs (creation, destruction, blocage, deblocage) | ActorSystem avec methodes `actorOf()`, `stop()`, `block()`, `unblock()` | `actor-framework/src/main/java/com/music/actor/core/ActorSystem.java` |
-| Communication asynchrone (tell) | Pattern fire-and-forget via `ActorRef.tell(message)` | `actor-framework/src/main/java/com/music/actor/core/ActorRef.java` |
-| Communication synchrone (ask) | Pattern request-response via `ActorRef.ask(message, timeout)` retournant `CompletableFuture` | `actor-framework/src/main/java/com/music/actor/runtime/LocalActorRef.java` |
-| Communication intra-microservice | Acteurs locaux communiquant via mailbox | `actor-framework/src/main/java/com/music/actor/runtime/LocalActorRef.java` |
-| Communication inter-microservices | RemoteActorRef + Eureka discovery + WebClient + Resilience4j | `actor-framework/src/main/java/com/music/actor/runtime/RemoteActorRef.java` |
-| Supervision et tolerance aux pannes | OneForOneStrategy et AllForOneStrategy avec directives RESUME, RESTART, STOP, ESCALATE | `actor-framework/src/main/java/com/music/actor/supervision/` |
-| Resilience inter-services | Circuit Breaker et Retry avec Resilience4j | `actor-framework/src/main/java/com/music/actor/resilience/ResilienceConfig.java` |
-| Scalabilite | AutoScalingActorPool avec scale-up/down automatique et compteur de messages fonctionnel | `actor-framework/src/main/java/com/music/actor/scalability/AutoScalingActorPool.java` |
-| Systeme de logs | Logs structures JSON par jour avec trace complete | `actor-framework/src/main/java/com/music/actor/logging/DefaultActorLogger.java` |
-| Application differente du restaurant | Parc d'attractions avec portes et attractions | `gate-service/` et `ride-service/` |
-| Tests unitaires et integration | JUnit 5 + Spring Boot Test + MockMvc + Awaitility | `actor-framework/src/test/`, `gate-service/src/test/`, `ride-service/src/test/` |
-| Collection Postman | Collection complete avec scenarios de test | `postman/CY_Land_API_Collection.postman_collection.json` |
-| Diagrammes d'architecture | Diagrammes Mermaid detailles | `docs/ARCHITECTURE.md` |
-| References bibliographiques | Format IEEE academique | `docs/REFERENCES.md` |
+| Exigence du sujet | Notre implementation | Fichiers concernes |
+|-------------------|---------------------|-------------------|
+| Gestion des acteurs (creation, destruction, blocage, deblocage) | Methodes `actorOf()`, `stop()`, `block()`, `unblock()` dans ActorSystem | `ActorSystem.java`, `ActorSystemImpl.java` |
+| Communication asynchrone entre acteurs | Pattern tell (fire-and-forget) via `ActorRef.tell()` | `ActorRef.java`, `LocalActorRef.java` |
+| Communication synchrone entre acteurs | Pattern ask avec `CompletableFuture` via `ActorRef.ask()` | `ActorRef.java`, `LocalActorRef.java` |
+| Communication intra-microservice | Acteurs locaux avec mailbox | `LocalActorRef.java` |
+| Communication inter-microservices | RemoteActorRef + Eureka + WebClient | `RemoteActorRef.java` |
+| Supervision et tolerance aux pannes | Strategies OneForOne et AllForOne avec directives RESUME, RESTART, STOP, ESCALATE | `SupervisorStrategy.java`, `OneForOneStrategy.java` |
+| Scalabilite des acteurs | AutoScalingActorPool avec scale-up/down automatique | `AutoScalingActorPool.java` |
+| Systeme de logs | Logs JSON structures par jour | `DefaultActorLogger.java` |
+| Application differente du restaurant | Parc d'attractions (portes + attractions) | `gate-service/`, `ride-service/` |
+| Tests unitaires et integration | 42 tests avec JUnit 5, MockMvc, Awaitility | `src/test/java/` dans chaque module |
 
-### Fonctionnalites Supplementaires
+### Fonctionnalites supplementaires
 
 | Fonctionnalite | Description |
 |----------------|-------------|
-| Virtual Threads (Java 21+) | Utilisation des threads virtuels pour une meilleure scalabilite |
-| Resilience4j | Circuit Breaker et Retry pour la tolerance aux pannes inter-services |
-| Snapshot/Restore | Persistance de l'etat des acteurs pour recuperation apres crash |
-| Scheduling | Planification de messages avec `scheduleOnce()` et `schedulePeriodic()` |
-| Messaging RabbitMQ | Communication evenementielle entre services via Spring Cloud Stream |
-| Dockerfiles | Conteneurisation complete de tous les services |
+| Virtual Threads | Utilisation des threads virtuels Java 21 |
+| Resilience4j | Circuit Breaker et Retry pour la tolerance aux pannes |
+| RabbitMQ | Communication par evenements entre services |
+| Docker | Conteneurisation des services |
 
 ---
 
 ## Architecture
 
-Pour les diagrammes detailles (Mermaid), consultez `docs/ARCHITECTURE.md`.
-
 ```
-+---------------------------------------------------------------------+
-|                       EUREKA SERVER (8761)                          |
-|                    Service Discovery & Registry                     |
-+---------------------------------------------------------------------+
-                                  ^
-                  +---------------+---------------+
-                  |                               |
-+----------------------------------+  +----------------------------------+
-|      GATE SERVICE (8081)         |  |      RIDE SERVICE (8082)         |
-|                                  |  |                                  |
-|  +----------------------------+  |  |  +----------------------------+  |
-|  |      Actor Framework       |  |  |  |      Actor Framework       |  |
-|  |  +------+ +------+ +-----+ |  |  |  |  +----+ +----+ +----+      |  |
-|  |  |  G1  | |  G2  | | VIP | |  |  |  |  | RC | | GR | | VR |      |  |
-|  |  +------+ +------+ +-----+ |  |  |  |  +----+ +----+ +----+      |  |
-|  |       Gate Actors          |  |  |  |      Ride Actors           |  |
-|  +----------------------------+  |  |  +----------------------------+  |
-|                                  |  |                                  |
-|  +----------------------------+  |  |  +----------------------------+  |
-|  |   Auto-Scaling Pool        |  |  |  |   Visitor Tracker          |  |
-|  |   (2-10 scanner workers)   |  |  |  |   (inter-service comm)     |  |
-|  +----------------------------+  |  |  +----------------------------+  |
-|                                  |  |                                  |
-|  +----------------------------+  |  |  +----------------------------+  |
-|  |   Resilience4j             |  |  |  |   Resilience4j             |  |
-|  |   Circuit Breaker + Retry  |  |  |  |   Circuit Breaker + Retry  |  |
-|  +----------------------------+  |  |  +----------------------------+  |
-+-----------------+----------------+  +-----------------+----------------+
-                  |                                     |
-                  +----------------+--------------------+
-                                   v
-                  +--------------------------------+
-                  |        RABBITMQ (5672)         |
-                  |       Message Broker           |
-                  |    park.events exchange        |
-                  +--------------------------------+
+                    +------------------+
+                    | Eureka Server    |
+                    | (port 8761)      |
+                    +--------+---------+
+                             |
+              +--------------+--------------+
+              |                             |
+    +---------+----------+       +----------+---------+
+    | Gate Service       |       | Ride Service       |
+    | (port 8081)        |       | (port 8082)        |
+    |                    |       |                    |
+    | Acteurs:           |       | Acteurs:           |
+    | - G1, G2, VIP      |       | - rc, gr, vr       |
+    | - Scanner Pool     |       | - visitor-tracker  |
+    +---------+----------+       +----------+---------+
+              |                             |
+              +-------------+---------------+
+                            |
+                   +--------+--------+
+                   | RabbitMQ        |
+                   | (port 5672)     |
+                   +-----------------+
 ```
-
-### Flux de Communication
-
-1. Visiteur scanne son ticket -> Gate Service recoit la requete
-2. GateActor valide le ticket -> Publie evenement sur RabbitMQ
-3. Ride Service consomme l'evenement -> Met a jour le tracker de visiteurs
-4. Visiteur rejoint une file -> RideActor gere la queue
-5. Cycle demarre -> Passagers charges, evenement publie
-
-### Tolerance aux Pannes Inter-Services
-
-Le framework utilise Resilience4j pour garantir la resilience des communications :
-
-- **Circuit Breaker** : Ouvre le circuit apres 5 echecs consecutifs, reste ouvert 30 secondes
-- **Retry** : 3 tentatives avec backoff exponentiel (500ms, 1s, 2s)
-- **Monitoring** : Endpoints `/resilience/*` pour surveiller l'etat des circuits
 
 ---
 
 ## Prerequis
 
-### Logiciels Requis
-
-| Outil | Version Minimum | Verification |
-|-------|-----------------|--------------|
+| Outil | Version | Verification |
+|-------|---------|--------------|
 | Java JDK | 21+ | `java -version` |
 | Maven | 3.9+ | `mvn -version` |
-| Docker Desktop | 24+ | `docker --version` |
-| Git | 2+ | `git --version` |
-
-### Installation des Prerequis
-
-#### macOS
-
-```bash
-# Installer Homebrew si necessaire
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# Installer Java 21
-brew install openjdk@21
-
-# Ajouter Java au PATH (ajouter dans ~/.zshrc ou ~/.bash_profile)
-export PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH"
-export JAVA_HOME="/opt/homebrew/opt/openjdk@21"
-
-# Installer Maven
-brew install maven
-
-# Installer Docker Desktop
-brew install --cask docker
-
-# Verifier les installations
-java -version
-mvn -version
-docker --version
-```
-
-#### Windows 10/11
-
-Option 1 : Installation manuelle
-
-1. Java 21 : Telecharger depuis https://adoptium.net/temurin/releases/?version=21
-2. Maven : Telecharger depuis https://maven.apache.org/download.cgi
-3. Docker Desktop : Telecharger depuis https://www.docker.com/products/docker-desktop/
-
-Option 2 : Via Chocolatey (PowerShell en administrateur)
-
-```powershell
-choco install temurin21 -y
-choco install maven -y
-choco install docker-desktop -y
-```
-
-Option 3 : Via Winget
-
-```powershell
-winget install EclipseAdoptium.Temurin.21.JDK
-winget install Apache.Maven
-winget install Docker.DockerDesktop
-```
+| Docker | 24+ | `docker --version` |
 
 ---
 
 ## Installation et Lancement
 
-### Cloner le Projet
+### 1. Cloner le projet
 
 ```bash
-git clone <repository-url>
+git clone <url-du-repo>
 cd CY_Land
 ```
 
-### Demarrage Manuel (4 terminaux)
-
-#### Terminal 0 : Demarrer RabbitMQ
-
-IMPORTANT : Lancer Docker Desktop avant d'executer les commandes Docker.
+### 2. Demarrer RabbitMQ
 
 ```bash
-docker run -d --name park-rabbitmq -p 5672:5672 -p 15672:15672 -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest rabbitmq:3-management
-
-# Attendre ~30 secondes que RabbitMQ soit pret
-docker logs park-rabbitmq 2>&1 | grep "started"
+docker run -d --name park-rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 ```
 
-#### Terminal 1 : Compiler et Demarrer Eureka
+Attendre 30 secondes que RabbitMQ demarre.
+
+### 3. Compiler le projet
 
 ```bash
 mvn clean install -DskipTests
+```
+
+### 4. Demarrer les services (3 terminaux)
+
+Terminal 1 - Eureka :
+```bash
 cd eureka-server
 mvn spring-boot:run
 ```
 
-Attendre le message : `EUREKA SERVER STARTED`
-
-#### Terminal 2 : Demarrer Gate Service
-
+Terminal 2 - Gate Service :
 ```bash
 cd gate-service
 mvn spring-boot:run
 ```
 
-Attendre le message : `GATE SERVICE READY`
-
-#### Terminal 3 : Demarrer Ride Service
-
+Terminal 3 - Ride Service :
 ```bash
 cd ride-service
 mvn spring-boot:run
 ```
 
-Attendre le message : `RIDE SERVICE READY`
+### URLs des services
 
-### Alternative : Docker Compose
-
-```bash
-# Tout demarrer en une commande
-docker compose up --build
-
-# Arreter
-docker compose down
-```
-
-### URLs des Services
-
-| Service | URL | Description |
-|---------|-----|-------------|
-| Eureka Dashboard | http://localhost:8761 | Visualiser les services enregistres |
-| Gate Service | http://localhost:8081 | API de controle d'acces |
-| Ride Service | http://localhost:8082 | API de gestion des attractions |
-| RabbitMQ Dashboard | http://localhost:15672 | Interface RabbitMQ (guest/guest) |
+| Service | URL |
+|---------|-----|
+| Eureka Dashboard | http://localhost:8761 |
+| Gate Service | http://localhost:8081 |
+| Ride Service | http://localhost:8082 |
+| RabbitMQ | http://localhost:15672 (guest/guest) |
 
 ---
 
-## Guide de Test Complet
+## Guide de Test
 
-### Verifier les Services
-
-macOS/Linux :
+### Verifier que les services fonctionnent
 
 ```bash
-curl http://localhost:8761/actuator/health
 curl http://localhost:8081/actuator/health
 curl http://localhost:8082/actuator/health
-```
-
-Windows PowerShell :
-
-```powershell
-Invoke-RestMethod http://localhost:8761/actuator/health
-Invoke-RestMethod http://localhost:8081/actuator/health
-Invoke-RestMethod http://localhost:8082/actuator/health
 ```
 
 ### Tester le Gate Service
 
 ```bash
-# Lister les portes
+# Liste des portes
 curl http://localhost:8081/gate
 
-# Scan asynchrone (tell pattern)
+# Scan asynchrone (pattern tell)
 curl -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
 
-# Scan synchrone (ask pattern)
+# Scan synchrone (pattern ask)
 curl -X POST "http://localhost:8081/gate/G1/scan-sync?ticketId=T002"
 
-# Bloquer/debloquer une porte
+# Bloquer une porte
 curl -X POST "http://localhost:8081/gate/G2/block"
+
+# Debloquer une porte
 curl -X POST "http://localhost:8081/gate/G2/unblock"
-
-# Creer/supprimer une porte
-curl -X POST "http://localhost:8081/gate?gateId=G3&name=Entree%20Nord&type=MAIN_GATE"
-curl -X DELETE "http://localhost:8081/gate/G3"
-
-# Metriques du pool
-curl http://localhost:8081/gate/pool/metrics
 ```
 
 ### Tester le Ride Service
 
 ```bash
-# Lister les attractions
+# Liste des attractions
 curl http://localhost:8082/rides
 
 # Etat d'une attraction
 curl http://localhost:8082/rides/rc/state
 
-# Rejoindre la queue
+# Rejoindre la file d'attente
 curl -X POST "http://localhost:8082/rides/rc/join?ticketId=V001"
-curl -X POST "http://localhost:8082/rides/rc/join?ticketId=V002"
 
 # Demarrer un cycle
 curl -X POST "http://localhost:8082/rides/rc/start-cycle"
 
 # Signaler une panne
-curl -X POST "http://localhost:8082/rides/vr/report-fault?faultType=MECHANICAL&description=Panne%20moteur"
+curl -X POST "http://localhost:8082/rides/vr/report-fault?faultType=MECHANICAL&description=Test"
 
 # Reparer
 curl -X POST "http://localhost:8082/rides/vr/repair"
 ```
 
-### Tester l'API de Gestion des Acteurs
+### Tester la gestion des acteurs
 
 ```bash
-# Lister tous les acteurs
+# Liste des acteurs
 curl http://localhost:8081/actors
-curl http://localhost:8082/actors
 
 # Details d'un acteur
 curl http://localhost:8081/actors/G1
 
 # Metriques systeme
 curl http://localhost:8081/actors/system/metrics
-curl http://localhost:8082/actors/system/metrics
 ```
-
-### Tester l'API de Resilience
-
-```bash
-# Liste des circuit breakers
-curl http://localhost:8081/resilience/circuit-breakers
-
-# Sante des communications inter-services
-curl http://localhost:8081/resilience/health
-
-# Metriques des acteurs distants
-curl http://localhost:8081/resilience/remote-actors
-```
-
-### Verifier les Logs
-
-macOS/Linux :
-
-```bash
-cat logs/gate-service/actors/actors-$(date +%Y-%m-%d).jsonl | head -20
-cat logs/ride-service/actors/actors-$(date +%Y-%m-%d).jsonl | head -20
-```
-
-Windows PowerShell :
-
-```powershell
-Get-Content logs\gate-service\actors\actors-*.jsonl | Select-Object -First 20
-Get-Content logs\ride-service\actors\actors-*.jsonl | Select-Object -First 20
-```
-
----
-
-## Collection Postman
-
-Une collection Postman complete est disponible dans `postman/CY_Land_API_Collection.postman_collection.json`.
-
-### Importer la Collection
-
-1. Ouvrir Postman
-2. File -> Import
-3. Selectionner le fichier `postman/CY_Land_API_Collection.postman_collection.json`
-
-### Contenu de la Collection
-
-La collection contient plus de 30 requetes organisees en categories :
-
-| Categorie | Description |
-|-----------|-------------|
-| Health Checks | Verification de sante des services |
-| Gate Service | Tous les endpoints du Gate Service |
-| Ride Service | Tous les endpoints du Ride Service |
-| Actor Management | API de gestion des acteurs |
-| Eureka Discovery | API de decouverte de services |
-| Scenarios de Test | 3 scenarios end-to-end complets |
-
-### Scenarios de Test Inclus
-
-1. Scenario 1 : Entree visiteur complet (scan -> rejoindre attraction -> verifier queue)
-2. Scenario 2 : Gestion de panne (etat initial -> signaler panne -> verifier fermeture -> reparer -> verifier reouverture)
-3. Scenario 3 : Blocage/Deblocage acteur
-
-### Variables d'Environnement
-
-La collection utilise des variables pre-configurees :
-
-- `gate_url` : http://localhost:8081
-- `ride_url` : http://localhost:8082
-- `eureka_url` : http://localhost:8761
 
 ---
 
 ## Tests Automatises
 
-### Executer Tous les Tests
+### Lancer tous les tests
 
 ```bash
 mvn test
 ```
 
-### Executer les Tests par Module
+### Tests par module
 
 ```bash
-# Tests du framework d'acteurs (8 tests)
-cd actor-framework
-mvn test
+# Framework (8 tests)
+cd actor-framework && mvn test
 
-# Tests d'integration du Gate Service (18 tests)
-cd gate-service
-mvn test
+# Gate Service (18 tests)
+cd gate-service && mvn test
 
-# Tests d'integration du Ride Service (16 tests)
-cd ride-service
-mvn test
+# Ride Service (16 tests)
+cd ride-service && mvn test
 ```
 
-### Resultats Attendus
+### Resultat attendu
 
 ```
-[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0  (actor-framework)
-[INFO] Tests run: 18, Failures: 0, Errors: 0, Skipped: 0  (gate-service)
-[INFO] Tests run: 16, Failures: 0, Errors: 0, Skipped: 0  (ride-service)
-[INFO] BUILD SUCCESS
+Tests run: 42, Failures: 0, Errors: 0
+BUILD SUCCESS
 ```
 
-### Description des Tests
+### Description des tests
 
-#### Tests du Framework (ActorFrameworkTest.java) - 8 tests
+Tests du framework (8 tests) :
+- Creation d'acteur
+- Pattern tell (asynchrone)
+- Pattern ask (synchrone)
+- Ordre FIFO des messages
+- Blocage/deblocage
+- Supervision et redemarrage
+- Arret d'acteur
 
-| Test | Description |
-|------|-------------|
-| shouldCreateActor | Verifie la creation d'un acteur |
-| shouldReturnSameActorIfExists | Verifie l'unicite des acteurs |
-| shouldReceiveMessages | Teste le pattern tell (asynchrone) |
-| shouldReceiveResponseWithAsk | Teste le pattern ask (synchrone) |
-| shouldProcessMessagesInOrder | Verifie l'ordre FIFO des messages |
-| shouldBlockAndUnblockActor | Teste le blocage/deblocage |
-| shouldRestartActorAfterError | Teste la supervision et redemarrage |
-| shouldStopActor | Verifie l'arret propre d'un acteur |
+Tests Gate Service (18 tests) :
+- Scan de tickets
+- Publication d'evenements RabbitMQ
+- Gestion des portes
+- Tests de resilience
+- Test de charge (50 scans)
 
-#### Tests d'Integration Gate Service (GateIntegrationTest.java) - 8 tests
+Tests Ride Service (16 tests) :
+- Liste des attractions
+- File d'attente
+- Cycles d'attraction
+- Pannes et reparations
+- Blocage/deblocage
 
-| Test | Description |
-|------|-------------|
-| scanShouldReturn202 | Verifie le scan asynchrone |
-| scanSyncShouldReturnResult | Verifie le scan synchrone |
-| scanShouldPublishEvent | Verifie la publication RabbitMQ |
-| shouldListGates | Verifie le listing des portes |
-| shouldBlockGate | Teste le blocage d'une porte |
-| shouldCreateAndDeleteGate | Teste creation/suppression |
-| shouldListActors | Verifie l'API de gestion |
-| shouldReturnSystemMetrics | Verifie les metriques |
+---
 
-#### Tests d'Integration Inter-Services (InterServiceIntegrationTest.java) - 10 tests
+## Collection Postman
 
-| Test | Description |
-|------|-------------|
-| scanShouldPublishVisitorEnteredEvent | Verifie la publication d'evenements VisitorEntered vers RabbitMQ |
-| rejectedTicketShouldPublishRejectionEvent | Verifie les evenements de rejet de tickets |
-| shouldConsumeExternalEvents | Teste la consommation d'evenements externes |
-| fullFlowScanToEventToTracking | Flux complet : scan -> evenement -> tracking |
-| multipleTicketsShouldGenerateSequentialEvents | Verifie les evenements multiples sequentiels |
-| shouldContinueWhenRemoteServiceUnavailable | Teste la resilience quand le Ride Service est indisponible |
-| blockingGateShouldNotAffectPendingEvents | Verifie que le blocage n'affecte pas les evenements en cours |
-| systemMetricsShouldIncludeLocalActors | Verifie que les metriques incluent les acteurs locaux |
-| scannerPoolMetricsShouldBeAvailable | Verifie les metriques du pool de scanners |
-| shouldHandleHighLoadOfScans | Test de charge avec 50 scans simultanes |
+Une collection Postman est disponible dans `postman/CY_Land_API_Collection.postman_collection.json`.
 
-#### Tests d'Integration Ride Service (RideIntegrationTest.java) - 16 tests
+Pour l'utiliser :
+1. Ouvrir Postman
+2. File > Import
+3. Selectionner le fichier JSON
 
-| Test | Description |
-|------|-------------|
-| shouldListRides | Liste les attractions |
-| shouldGetRideState | Etat d'une attraction |
-| shouldReturn404ForUnknownRide | 404 pour attraction inexistante |
-| shouldJoinQueue | Rejoindre la file d'attente |
-| shouldReturn404WhenJoiningUnknownRide | 404 pour join inexistant |
-| shouldStartCycleWithPassengers | Demarrer un cycle |
-| shouldFailStartCycleWithEmptyQueue | Echec cycle si queue vide |
-| shouldReportFault | Signaler une panne |
-| shouldRepairRide | Reparer une attraction |
-| shouldBlockRide | Bloquer une attraction |
-| shouldUnblockRide | Debloquer une attraction |
-| shouldListActors | Liste des acteurs |
-| shouldGetActorDetails | Details d'un acteur |
-| shouldReturnSystemMetrics | Metriques systeme |
-| shouldHandleInvalidFaultType | Type de panne invalide |
-| shouldAcceptAllFaultTypes | Tous les types de pannes |
-
-### Bibliotheques de Test Utilisees
-
-| Bibliotheque | Usage |
-|--------------|-------|
-| JUnit 5 | Framework de tests |
-| Spring Boot Test | Tests d'integration Spring |
-| MockMvc | Tests des endpoints REST |
-| AssertJ | Assertions fluides |
-| Awaitility | Tests asynchrones avec attente conditionnelle |
-| Spring Cloud Stream Test Binder | Simulation de RabbitMQ pour les tests |
+La collection contient plus de 30 requetes organisees par service.
 
 ---
 
@@ -533,108 +275,47 @@ mvn test
 
 | Methode | Endpoint | Description |
 |---------|----------|-------------|
-| GET | /gate | Liste toutes les portes |
-| POST | /gate | Cree une nouvelle porte |
-| DELETE | /gate/{gateId} | Supprime une porte |
-| POST | /gate/{gateId}/scan | Scan asynchrone (tell) |
-| POST | /gate/{gateId}/scan-sync | Scan synchrone (ask) |
-| GET | /gate/{gateId}/status | Statut d'une porte |
-| POST | /gate/{gateId}/block | Bloque une porte |
-| POST | /gate/{gateId}/unblock | Debloque une porte |
-| GET | /gate/pool/metrics | Metriques du pool de scanners |
+| GET | /gate | Liste les portes |
+| POST | /gate/{id}/scan | Scan asynchrone |
+| POST | /gate/{id}/scan-sync | Scan synchrone |
+| POST | /gate/{id}/block | Bloquer |
+| POST | /gate/{id}/unblock | Debloquer |
+| GET | /gate/pool/metrics | Metriques du pool |
 
 ### Ride Service (port 8082)
 
 | Methode | Endpoint | Description |
 |---------|----------|-------------|
 | GET | /rides | Liste les attractions |
-| GET | /rides/{rideId}/state | Etat d'une attraction |
-| POST | /rides/{rideId}/join | Rejoindre la file d'attente |
-| POST | /rides/{rideId}/start-cycle | Demarrer un cycle |
-| POST | /rides/{rideId}/report-fault | Signaler une panne |
-| POST | /rides/{rideId}/repair | Reparer une attraction |
-| POST | /rides/{rideId}/block | Bloquer une attraction |
-| POST | /rides/{rideId}/unblock | Debloquer une attraction |
+| GET | /rides/{id}/state | Etat d'une attraction |
+| POST | /rides/{id}/join | Rejoindre la file |
+| POST | /rides/{id}/start-cycle | Demarrer un cycle |
+| POST | /rides/{id}/report-fault | Signaler panne |
+| POST | /rides/{id}/repair | Reparer |
 
-### API de Gestion des Acteurs (tous les services)
+### Gestion des acteurs (tous les services)
 
 | Methode | Endpoint | Description |
 |---------|----------|-------------|
-| GET | /actors | Liste tous les acteurs |
+| GET | /actors | Liste des acteurs |
 | GET | /actors/{id} | Details d'un acteur |
-| POST | /actors/{id}/block | Bloquer un acteur |
-| POST | /actors/{id}/unblock | Debloquer un acteur |
-| DELETE | /actors/{id} | Supprimer un acteur |
-| POST | /actors/{id}/tell | Envoyer un message (inter-service) |
-| POST | /actors/{id}/ask | Requete synchrone (inter-service) |
-| GET | /actors/system/metrics | Metriques du systeme |
-
-### API de Resilience (tous les services)
-
-| Methode | Endpoint | Description |
-|---------|----------|-------------|
-| GET | /resilience/circuit-breakers | Liste tous les circuit breakers |
-| GET | /resilience/circuit-breakers/{name} | Details d'un circuit breaker |
-| GET | /resilience/health | Sante des communications inter-services |
-| GET | /resilience/remote-actors | Metriques des acteurs distants |
+| POST | /actors/{id}/block | Bloquer |
+| POST | /actors/{id}/unblock | Debloquer |
+| GET | /actors/system/metrics | Metriques |
 
 ---
 
 ## Concepts Spring Boot Utilises
 
-### Annotations et Patterns
-
-| Annotation/Pattern | Utilisation |
-|-------------------|-------------|
-| @SpringBootApplication | Point d'entree des microservices |
+| Concept | Utilisation |
+|---------|-------------|
+| @SpringBootApplication | Point d'entree des services |
+| @RestController | API REST |
+| @Service, @Component | Injection de dependances |
 | @EnableDiscoveryClient | Enregistrement Eureka |
-| @EnableEurekaServer | Serveur de decouverte |
-| @Component, @Service | Injection de dependances |
-| @RestController, @RequestMapping | API REST |
-| @PostConstruct, @PreDestroy | Hooks de cycle de vie |
-| @Value | Injection de configuration |
-| @Validated | Validation des parametres |
-| @Configuration | Configuration Resilience4j |
-
-### Spring Cloud
-
-| Composant | Utilisation |
-|-----------|-------------|
-| Spring Cloud Netflix Eureka | Decouverte et enregistrement des services |
-| Spring Cloud Stream | Messaging avec RabbitMQ |
-| Spring Cloud LoadBalancer | Equilibrage de charge |
+| Spring Cloud Stream | Messaging RabbitMQ |
 | WebClient | Communication HTTP reactive |
-
-### Resilience4j
-
-| Composant | Utilisation |
-|-----------|-------------|
-| CircuitBreaker | Protection contre les pannes en cascade |
-| Retry | Reessai automatique avec backoff exponentiel |
-| CircuitBreakerRegistry | Gestion centralisee des circuit breakers |
-| RetryRegistry | Gestion centralisee des politiques de retry |
-
-### Fonctionnalites Java 21+
-
-| Fonctionnalite | Utilisation |
-|----------------|-------------|
-| Virtual Threads | Executors.newThreadPerTaskExecutor() pour les acteurs |
-| Records | Messages immutables (ScanTicket, GateStatus, etc.) |
-| Sealed Classes | Hierarchie de messages controlee |
-| Pattern Matching | switch sur les types de messages dans onReceive() |
-| CompletableFuture | Pattern ask asynchrone |
-
-### Autres Patterns
-
-| Pattern | Implementation |
-|---------|----------------|
-| Actor Model | Framework complet inspire d'Akka |
-| Fire-and-Forget | Methode tell() |
-| Request-Response | Methode ask() avec timeout |
-| Supervision | Strategies OneForOne et AllForOne |
-| Circuit Breaker | Resilience4j pour la tolerance aux pannes |
-| Event Sourcing | Publication d'evenements via RabbitMQ |
-| CQRS | Separation lecture/ecriture via evenements |
+| CompletableFuture | Programmation asynchrone |
 
 ---
 
@@ -642,164 +323,32 @@ mvn test
 
 ```
 cy-land/
-|-- pom.xml                          # Parent POM (Maven multi-module)
-|-- docker-compose.yml               # Orchestration Docker
-|-- README.md                        # Ce fichier
-|
+|-- pom.xml                     # POM parent
+|-- docker-compose.yml
+|-- README.md
 |-- docs/
-|   |-- ARCHITECTURE.md              # Diagrammes Mermaid
-|   +-- REFERENCES.md                # References bibliographiques IEEE
-|
+|   |-- ARCHITECTURE.md
+|   +-- REFERENCES.md
 |-- postman/
 |   +-- CY_Land_API_Collection.postman_collection.json
-|
-|-- actor-framework/                 # MODULE 1 : Framework reutilisable
-|   |-- pom.xml
-|   |-- Dockerfile
+|-- actor-framework/            # Framework reutilisable
 |   +-- src/main/java/com/music/actor/
-|       |-- core/                    # Interfaces de base
-|       |-- runtime/                 # Implementations (LocalActorRef, RemoteActorRef)
-|       |-- supervision/             # Strategies de supervision
-|       |-- scalability/             # Auto-scaling
-|       |-- resilience/              # Configuration Resilience4j
-|       +-- logging/                 # Logs structures
-|
-|-- eureka-server/                   # MODULE 2 : Service Discovery
-|   |-- pom.xml
-|   |-- Dockerfile
-|   +-- src/
-|
-|-- gate-service/                    # MODULE 3 : Microservice Portes
-|   |-- pom.xml
-|   |-- Dockerfile
-|   +-- src/
-|       |-- main/java/com/music/gate/
-|       +-- test/java/com/music/gate/
-|           |-- GateIntegrationTest.java
-|           +-- InterServiceIntegrationTest.java
-|
-+-- ride-service/                    # MODULE 4 : Microservice Attractions
-    |-- pom.xml
-    |-- Dockerfile
-    +-- src/
-        |-- main/java/com/music/ride/
-        +-- test/java/com/music/ride/
-            +-- RideIntegrationTest.java
-```
-
----
-
-## Nettoyage du Projet
-
-Lors de la compilation et de l'execution des microservices, plusieurs fichiers et dossiers sont generes. Utilisez les commandes suivantes pour nettoyer le projet.
-
-### Nettoyage Complet (Recommande)
-
-macOS/Linux :
-
-```bash
-# Nettoyage Maven + logs + fichiers generes
-mvn clean && \
-rm -rf logs/ && \
-rm -rf */target/ && \
-rm -rf **/target/ && \
-rm -rf */logs/ && \
-rm -rf **/logs/ && \
-rm -rf *.log && \
-rm -rf **/*.log
-```
-
-Windows PowerShell :
-
-```powershell
-# Nettoyage Maven + logs + fichiers generes
-mvn clean
-Remove-Item -Recurse -Force -ErrorAction SilentlyContinue logs
-Remove-Item -Recurse -Force -ErrorAction SilentlyContinue */target
-Remove-Item -Recurse -Force -ErrorAction SilentlyContinue */logs
-Get-ChildItem -Recurse -Filter "*.log" | Remove-Item -Force
-```
-
-### Nettoyage Maven Uniquement
-
-```bash
-mvn clean
-```
-
-### Nettoyage Docker
-
-```bash
-# Arreter et supprimer les conteneurs
-docker compose down
-
-# Supprimer le conteneur RabbitMQ
-docker stop park-rabbitmq && docker rm park-rabbitmq
-
-# Supprimer les images construites (optionnel)
-docker rmi cy-land-gate-service cy-land-ride-service cy-land-eureka-server
-
-# Nettoyage complet Docker (attention : supprime toutes les images/conteneurs non utilises)
-docker system prune -a
-```
-
-### Script de Nettoyage Complet
-
-Creez un fichier `clean.sh` (macOS/Linux) :
-
-```bash
-#!/bin/bash
-echo "Nettoyage du projet CY Land..."
-
-# Maven clean
-mvn clean -q
-
-# Supprimer les logs
-rm -rf logs/
-rm -rf */logs/
-rm -rf **/logs/
-
-# Supprimer les fichiers target restants
-rm -rf */target/
-rm -rf **/target/
-
-# Supprimer les fichiers de log individuels
-find . -name "*.log" -type f -delete
-find . -name "*.jsonl" -type f -delete
-
-# Docker cleanup (optionnel)
-if command -v docker &> /dev/null; then
-    docker stop park-rabbitmq 2>/dev/null
-    docker rm park-rabbitmq 2>/dev/null
-fi
-
-echo "Nettoyage termine!"
-```
-
-Rendez-le executable et lancez-le :
-
-```bash
-chmod +x clean.sh
-./clean.sh
+|       |-- core/               # Interfaces (Actor, ActorRef, Message...)
+|       |-- runtime/            # Implementations
+|       |-- supervision/        # Strategies de supervision
+|       |-- scalability/        # Auto-scaling
+|       +-- logging/            # Logs
+|-- eureka-server/              # Service Discovery
+|-- gate-service/               # Microservice Portes
++-- ride-service/               # Microservice Attractions
 ```
 
 ---
 
 ## Arret des Services
 
-### macOS/Linux
-
 ```bash
-# Arreter les services Spring Boot (Ctrl+C dans chaque terminal)
-
-# Arreter RabbitMQ
-docker stop park-rabbitmq
-docker rm park-rabbitmq
-```
-
-### Windows
-
-```powershell
-# Arreter les services Spring Boot (Ctrl+C dans chaque terminal)
+# Ctrl+C dans chaque terminal
 
 # Arreter RabbitMQ
 docker stop park-rabbitmq
@@ -810,88 +359,38 @@ docker rm park-rabbitmq
 
 ## Depannage
 
-### Docker Desktop non lance
+### Port deja utilise
 
-Si vous obtenez l'erreur "Cannot connect to the Docker daemon" :
+```bash
+# Trouver le processus
+lsof -i :8081
 
-1. Ouvrez Docker Desktop
-2. Attendez que l'icone Docker soit stable
-3. Verifiez avec `docker info`
-4. Relancez la commande
+# Tuer le processus
+kill -9 <PID>
+```
 
 ### RabbitMQ ne demarre pas
 
 ```bash
-# Verifier si le port est utilise
-lsof -i :5672  # macOS/Linux
-netstat -ano | findstr :5672  # Windows
-
-# Supprimer le conteneur existant
 docker rm -f park-rabbitmq
+docker run -d --name park-rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 ```
-
-### Eureka ne trouve pas les services
-
-1. Verifier que Eureka est demarre en premier
-2. Attendre 30 secondes apres le demarrage de chaque service
-3. Verifier le dashboard : http://localhost:8761
 
 ### Erreur de compilation
 
 ```bash
 mvn clean install -DskipTests
-java -version  # Doit etre 21+
+java -version  # Verifier Java 21+
 ```
-
-### Port deja utilise
-
-```bash
-# Trouver le processus
-lsof -i :8081  # macOS/Linux
-netstat -ano | findstr :8081  # Windows
-
-# Tuer le processus
-kill -9 <PID>  # macOS/Linux
-taskkill /PID <PID> /F  # Windows
-```
-
-### Circuit Breaker en etat OPEN
-
-Si les communications inter-services echouent avec un circuit breaker ouvert :
-
-1. Verifier que le service cible est demarre
-2. Attendre 30 secondes (duree d'ouverture du circuit)
-3. Consulter les metriques : `curl http://localhost:8081/resilience/health`
-
----
-
-## References
-
-Pour les references bibliographiques completes au format IEEE, consultez `docs/REFERENCES.md`.
-
-### Documentation Officielle
-
-- Akka Documentation : https://doc.akka.io/
-- Spring Boot Reference : https://docs.spring.io/spring-boot/docs/current/reference/html/
-- Spring Cloud Netflix Eureka : https://spring.io/projects/spring-cloud-netflix
-- Spring Cloud Stream : https://spring.io/projects/spring-cloud-stream
-- RabbitMQ Tutorials : https://www.rabbitmq.com/tutorials
-- Resilience4j Documentation : https://resilience4j.readme.io/docs
-
-### Java 21+
-
-- Virtual Threads (JEP 444) : https://openjdk.org/jeps/444
-- Pattern Matching for Switch (JEP 441) : https://openjdk.org/jeps/441
-- Record Patterns (JEP 440) : https://openjdk.org/jeps/440
-
-### Articles et Tutoriels
-
-- Actor Model Explained : https://www.brianstorti.com/the-actor-model/
-- Building Microservices with Spring Boot : https://spring.io/guides/gs/microservices
-- Circuit Breaker Pattern : https://martinfowler.com/bliki/CircuitBreaker.html
 
 ---
 
 ## Auteurs
 
-Paul PITIOT - ING2 Groupe 1 Equipe 6
+Equipe 6 - ING2 Groupe 1
+
+---
+
+## References
+
+Voir `docs/REFERENCES.md` pour la bibliographie complete.
