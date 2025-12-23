@@ -1,0 +1,728 @@
+{
+  "info": {
+    "_postman_id": "cy-land-actor-framework",
+    "name": "CY Land - Actor Framework API",
+    "description": "Collection Postman pour tester le framework d'acteurs distribués CY Land.\n\n## Services\n- **Gate Service** (port 8081): Gestion des portes d'entrée\n- **Ride Service** (port 8082): Gestion des attractions\n- **Eureka Server** (port 8761): Service Discovery\n\n## Prérequis\n1. Démarrer RabbitMQ\n2. Démarrer Eureka Server\n3. Démarrer Gate Service\n4. Démarrer Ride Service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "gate_url",
+      "value": "http://localhost:8081",
+      "type": "string"
+    },
+    {
+      "key": "ride_url",
+      "value": "http://localhost:8082",
+      "type": "string"
+    },
+    {
+      "key": "eureka_url",
+      "value": "http://localhost:8761",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🏥 Health Checks",
+      "item": [
+        {
+          "name": "Eureka Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{eureka_url}}/actuator/health",
+              "host": ["{{eureka_url}}"],
+              "path": ["actuator", "health"]
+            },
+            "description": "Vérifie que Eureka Server est opérationnel"
+          }
+        },
+        {
+          "name": "Gate Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gate_url}}/actuator/health",
+              "host": ["{{gate_url}}"],
+              "path": ["actuator", "health"]
+            },
+            "description": "Vérifie que Gate Service est opérationnel"
+          }
+        },
+        {
+          "name": "Ride Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ride_url}}/actuator/health",
+              "host": ["{{ride_url}}"],
+              "path": ["actuator", "health"]
+            },
+            "description": "Vérifie que Ride Service est opérationnel"
+          }
+        }
+      ],
+      "description": "Endpoints de vérification de santé des services"
+    },
+    {
+      "name": "🚪 Gate Service",
+      "item": [
+        {
+          "name": "Liste des portes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gate_url}}/gate",
+              "host": ["{{gate_url}}"],
+              "path": ["gate"]
+            },
+            "description": "Retourne la liste de toutes les portes disponibles"
+          }
+        },
+        {
+          "name": "Scan asynchrone (tell)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{gate_url}}/gate/G1/scan?ticketId=TICKET-001",
+              "host": ["{{gate_url}}"],
+              "path": ["gate", "G1", "scan"],
+              "query": [
+                {
+                  "key": "ticketId",
+                  "value": "TICKET-001",
+                  "description": "ID du ticket à scanner"
+                }
+              ]
+            },
+            "description": "Scan un ticket de manière asynchrone (fire-and-forget pattern)"
+          }
+        },
+        {
+          "name": "Scan synchrone (ask)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{gate_url}}/gate/G1/scan-sync?ticketId=TICKET-002",
+              "host": ["{{gate_url}}"],
+              "path": ["gate", "G1", "scan-sync"],
+              "query": [
+                {
+                  "key": "ticketId",
+                  "value": "TICKET-002",
+                  "description": "ID du ticket à scanner"
+                }
+              ]
+            },
+            "description": "Scan un ticket et attend la réponse (request-response pattern)"
+          }
+        },
+        {
+          "name": "Statut d'une porte",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gate_url}}/gate/G1/status",
+              "host": ["{{gate_url}}"],
+              "path": ["gate", "G1", "status"]
+            },
+            "description": "Retourne le statut d'une porte spécifique"
+          }
+        },
+        {
+          "name": "Bloquer une porte",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{gate_url}}/gate/G2/block",
+              "host": ["{{gate_url}}"],
+              "path": ["gate", "G2", "block"]
+            },
+            "description": "Bloque une porte (suspend le traitement des messages)"
+          }
+        },
+        {
+          "name": "Débloquer une porte",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{gate_url}}/gate/G2/unblock",
+              "host": ["{{gate_url}}"],
+              "path": ["gate", "G2", "unblock"]
+            },
+            "description": "Débloque une porte précédemment bloquée"
+          }
+        },
+        {
+          "name": "Créer une porte",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{gate_url}}/gate?gateId=G3&name=Entrée%20Nord&type=MAIN_GATE",
+              "host": ["{{gate_url}}"],
+              "path": ["gate"],
+              "query": [
+                {
+                  "key": "gateId",
+                  "value": "G3",
+                  "description": "ID de la nouvelle porte"
+                },
+                {
+                  "key": "name",
+                  "value": "Entrée%20Nord",
+                  "description": "Nom de la porte"
+                },
+                {
+                  "key": "type",
+                  "value": "MAIN_GATE",
+                  "description": "Type: MAIN_GATE, VIP_GATE, SERVICE_GATE, EMERGENCY_EXIT"
+                }
+              ]
+            },
+            "description": "Crée une nouvelle porte d'entrée"
+          }
+        },
+        {
+          "name": "Supprimer une porte",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{gate_url}}/gate/G3",
+              "host": ["{{gate_url}}"],
+              "path": ["gate", "G3"]
+            },
+            "description": "Supprime une porte existante"
+          }
+        },
+        {
+          "name": "Métriques du pool de scanners",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gate_url}}/gate/pool/metrics",
+              "host": ["{{gate_url}}"],
+              "path": ["gate", "pool", "metrics"]
+            },
+            "description": "Retourne les métriques de l'auto-scaling pool de scanners"
+          }
+        }
+      ],
+      "description": "Endpoints du Gate Service pour la gestion des portes d'entrée"
+    },
+    {
+      "name": "🎢 Ride Service",
+      "item": [
+        {
+          "name": "Liste des attractions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ride_url}}/rides",
+              "host": ["{{ride_url}}"],
+              "path": ["rides"]
+            },
+            "description": "Retourne la liste de toutes les attractions"
+          }
+        },
+        {
+          "name": "État d'une attraction",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ride_url}}/rides/rc/state",
+              "host": ["{{ride_url}}"],
+              "path": ["rides", "rc", "state"]
+            },
+            "description": "Retourne l'état complet d'une attraction (rc=RollerCoaster, gr=GrandeRoue, vr=SimulateurVR)"
+          }
+        },
+        {
+          "name": "Rejoindre la file d'attente",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{ride_url}}/rides/rc/join?ticketId=V001",
+              "host": ["{{ride_url}}"],
+              "path": ["rides", "rc", "join"],
+              "query": [
+                {
+                  "key": "ticketId",
+                  "value": "V001",
+                  "description": "ID du visiteur"
+                }
+              ]
+            },
+            "description": "Ajoute un visiteur à la file d'attente d'une attraction"
+          }
+        },
+        {
+          "name": "Démarrer un cycle",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{ride_url}}/rides/rc/start-cycle",
+              "host": ["{{ride_url}}"],
+              "path": ["rides", "rc", "start-cycle"]
+            },
+            "description": "Démarre manuellement un cycle d'attraction"
+          }
+        },
+        {
+          "name": "Signaler une panne",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{ride_url}}/rides/vr/report-fault?faultType=MECHANICAL&description=Panne%20moteur",
+              "host": ["{{ride_url}}"],
+              "path": ["rides", "vr", "report-fault"],
+              "query": [
+                {
+                  "key": "faultType",
+                  "value": "MECHANICAL",
+                  "description": "Type: MECHANICAL, ELECTRICAL, SAFETY, WEATHER"
+                },
+                {
+                  "key": "description",
+                  "value": "Panne%20moteur",
+                  "description": "Description de la panne"
+                }
+              ]
+            },
+            "description": "Signale une panne sur une attraction (ferme automatiquement l'attraction)"
+          }
+        },
+        {
+          "name": "Réparer une attraction",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{ride_url}}/rides/vr/repair",
+              "host": ["{{ride_url}}"],
+              "path": ["rides", "vr", "repair"]
+            },
+            "description": "Marque une attraction comme réparée (rouvre l'attraction)"
+          }
+        },
+        {
+          "name": "Bloquer une attraction",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{ride_url}}/rides/gr/block",
+              "host": ["{{ride_url}}"],
+              "path": ["rides", "gr", "block"]
+            },
+            "description": "Bloque une attraction (suspend le traitement des messages)"
+          }
+        },
+        {
+          "name": "Débloquer une attraction",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{ride_url}}/rides/gr/unblock",
+              "host": ["{{ride_url}}"],
+              "path": ["rides", "gr", "unblock"]
+            },
+            "description": "Débloque une attraction précédemment bloquée"
+          }
+        }
+      ],
+      "description": "Endpoints du Ride Service pour la gestion des attractions"
+    },
+    {
+      "name": "🤖 Actor Management",
+      "item": [
+        {
+          "name": "Liste des acteurs (Gate)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gate_url}}/actors",
+              "host": ["{{gate_url}}"],
+              "path": ["actors"]
+            },
+            "description": "Liste tous les acteurs du Gate Service"
+          }
+        },
+        {
+          "name": "Liste des acteurs (Ride)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ride_url}}/actors",
+              "host": ["{{ride_url}}"],
+              "path": ["actors"]
+            },
+            "description": "Liste tous les acteurs du Ride Service"
+          }
+        },
+        {
+          "name": "Détails d'un acteur",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gate_url}}/actors/G1",
+              "host": ["{{gate_url}}"],
+              "path": ["actors", "G1"]
+            },
+            "description": "Retourne les détails d'un acteur spécifique"
+          }
+        },
+        {
+          "name": "Bloquer un acteur",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{gate_url}}/actors/G1/block",
+              "host": ["{{gate_url}}"],
+              "path": ["actors", "G1", "block"]
+            },
+            "description": "Bloque un acteur via l'API de gestion générique"
+          }
+        },
+        {
+          "name": "Débloquer un acteur",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{gate_url}}/actors/G1/unblock",
+              "host": ["{{gate_url}}"],
+              "path": ["actors", "G1", "unblock"]
+            },
+            "description": "Débloque un acteur via l'API de gestion générique"
+          }
+        },
+        {
+          "name": "Supprimer un acteur",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{gate_url}}/actors/G3",
+              "host": ["{{gate_url}}"],
+              "path": ["actors", "G3"]
+            },
+            "description": "Supprime un acteur"
+          }
+        },
+        {
+          "name": "Métriques système (Gate)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gate_url}}/actors/system/metrics",
+              "host": ["{{gate_url}}"],
+              "path": ["actors", "system", "metrics"]
+            },
+            "description": "Retourne les métriques du système d'acteurs Gate"
+          }
+        },
+        {
+          "name": "Métriques système (Ride)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ride_url}}/actors/system/metrics",
+              "host": ["{{ride_url}}"],
+              "path": ["actors", "system", "metrics"]
+            },
+            "description": "Retourne les métriques du système d'acteurs Ride"
+          }
+        }
+      ],
+      "description": "API de gestion et monitoring des acteurs (disponible sur tous les services)"
+    },
+    {
+      "name": "📊 Eureka Discovery",
+      "item": [
+        {
+          "name": "Dashboard Eureka",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{eureka_url}}/",
+              "host": ["{{eureka_url}}"],
+              "path": [""]
+            },
+            "description": "Page d'accueil du dashboard Eureka (HTML)"
+          }
+        },
+        {
+          "name": "Liste des applications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{eureka_url}}/eureka/apps",
+              "host": ["{{eureka_url}}"],
+              "path": ["eureka", "apps"]
+            },
+            "description": "Liste toutes les applications enregistrées dans Eureka"
+          }
+        },
+        {
+          "name": "Détails Gate Service",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{eureka_url}}/eureka/apps/GATE-SERVICE",
+              "host": ["{{eureka_url}}"],
+              "path": ["eureka", "apps", "GATE-SERVICE"]
+            },
+            "description": "Détails de l'enregistrement du Gate Service"
+          }
+        },
+        {
+          "name": "Détails Ride Service",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{eureka_url}}/eureka/apps/RIDE-SERVICE",
+              "host": ["{{eureka_url}}"],
+              "path": ["eureka", "apps", "RIDE-SERVICE"]
+            },
+            "description": "Détails de l'enregistrement du Ride Service"
+          }
+        }
+      ],
+      "description": "API Eureka pour la découverte de services"
+    },
+    {
+      "name": "🔬 Scénarios de Test",
+      "item": [
+        {
+          "name": "Scénario 1: Entrée visiteur complet",
+          "item": [
+            {
+              "name": "1.1 Scan ticket",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{gate_url}}/gate/G1/scan-sync?ticketId=VISITOR-{{$timestamp}}",
+                  "host": ["{{gate_url}}"],
+                  "path": ["gate", "G1", "scan-sync"],
+                  "query": [
+                    {
+                      "key": "ticketId",
+                      "value": "VISITOR-{{$timestamp}}"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "1.2 Rejoindre attraction",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{ride_url}}/rides/rc/join?ticketId=VISITOR-{{$timestamp}}",
+                  "host": ["{{ride_url}}"],
+                  "path": ["rides", "rc", "join"],
+                  "query": [
+                    {
+                      "key": "ticketId",
+                      "value": "VISITOR-{{$timestamp}}"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "1.3 Vérifier queue",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{ride_url}}/rides/rc/state",
+                  "host": ["{{ride_url}}"],
+                  "path": ["rides", "rc", "state"]
+                }
+              }
+            }
+          ],
+          "description": "Test du parcours complet d'un visiteur: entrée -> attraction"
+        },
+        {
+          "name": "Scénario 2: Gestion de panne",
+          "item": [
+            {
+              "name": "2.1 Vérifier état initial",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{ride_url}}/rides/gr/state",
+                  "host": ["{{ride_url}}"],
+                  "path": ["rides", "gr", "state"]
+                }
+              }
+            },
+            {
+              "name": "2.2 Signaler panne",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{ride_url}}/rides/gr/report-fault?faultType=SAFETY&description=Inspection%20requise",
+                  "host": ["{{ride_url}}"],
+                  "path": ["rides", "gr", "report-fault"],
+                  "query": [
+                    {
+                      "key": "faultType",
+                      "value": "SAFETY"
+                    },
+                    {
+                      "key": "description",
+                      "value": "Inspection%20requise"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "2.3 Vérifier fermeture",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{ride_url}}/rides/gr/state",
+                  "host": ["{{ride_url}}"],
+                  "path": ["rides", "gr", "state"]
+                }
+              }
+            },
+            {
+              "name": "2.4 Réparer",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{ride_url}}/rides/gr/repair",
+                  "host": ["{{ride_url}}"],
+                  "path": ["rides", "gr", "repair"]
+                }
+              }
+            },
+            {
+              "name": "2.5 Vérifier réouverture",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{ride_url}}/rides/gr/state",
+                  "host": ["{{ride_url}}"],
+                  "path": ["rides", "gr", "state"]
+                }
+              }
+            }
+          ],
+          "description": "Test du cycle complet de gestion d'une panne"
+        },
+        {
+          "name": "Scénario 3: Blocage/Déblocage acteur",
+          "item": [
+            {
+              "name": "3.1 Vérifier acteur actif",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gate_url}}/actors/G2",
+                  "host": ["{{gate_url}}"],
+                  "path": ["actors", "G2"]
+                }
+              }
+            },
+            {
+              "name": "3.2 Bloquer acteur",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{gate_url}}/actors/G2/block",
+                  "host": ["{{gate_url}}"],
+                  "path": ["actors", "G2", "block"]
+                }
+              }
+            },
+            {
+              "name": "3.3 Vérifier blocage",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gate_url}}/actors/G2",
+                  "host": ["{{gate_url}}"],
+                  "path": ["actors", "G2"]
+                }
+              }
+            },
+            {
+              "name": "3.4 Débloquer acteur",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{gate_url}}/actors/G2/unblock",
+                  "host": ["{{gate_url}}"],
+                  "path": ["actors", "G2", "unblock"]
+                }
+              }
+            }
+          ],
+          "description": "Test du blocage et déblocage d'un acteur"
+        }
+      ],
+      "description": "Scénarios de test end-to-end pour valider le comportement du système"
+    }
+  ]
+}
