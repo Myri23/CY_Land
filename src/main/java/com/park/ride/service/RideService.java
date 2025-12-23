@@ -3,7 +3,6 @@ package com.park.ride.service;
 import com.park.actor.core.ActorContext;
 import com.park.actor.core.ActorRef;
 import com.park.ride.actor.*;
-import com.park.ride.messaging.in.JoinQueue;
 import com.park.ride.messaging.in.ReportFault;
 import com.park.ride.messaging.in.StartCycle;
 import org.springframework.stereotype.Service;
@@ -24,7 +23,6 @@ public class RideService {
     private final SimpleActorContext context = new SimpleActorContext();
     
     public RideService() {
-        // Initialiser les attractions par defaut
         registerRide(new RollerCoaster());
         registerRide(new GrandeRoue());
         registerRide(new SimulateurVR());
@@ -44,16 +42,11 @@ public class RideService {
         rides.put(ride.getRideId().toLowerCase(), ride);
     }
     
-    /**
-     * Ajoute un visiteur a la file d'attente d'une attraction.
-     */
     public void joinQueue(String rideId, String ticketId) {
         RideActor ride = getRide(rideId);
         if (ride != null) {
             ride.addToQueue(ticketId);
             
-            // Demarrer automatiquement un cycle si la queue atteint la capacite
-            // et qu'aucun cycle n'est en cours
             if (ride.getQueueSize() >= ride.getCapacity() && ride.getInCycle().isEmpty()) {
                 System.out.printf("[RIDE %s] Queue pleine, demarrage automatique du cycle%n", rideId);
                 ride.onReceive(new StartCycle(), context);
@@ -61,9 +54,6 @@ public class RideService {
         }
     }
     
-    /**
-     * Demarre manuellement un cycle pour une attraction.
-     */
     public void startCycle(String rideId) {
         RideActor ride = getRide(rideId);
         if (ride != null) {
@@ -71,9 +61,6 @@ public class RideService {
         }
     }
     
-    /**
-     * Signale une panne sur une attraction.
-     */
     public void reportFault(String rideId, String faultType, String description) {
         RideActor ride = getRide(rideId);
         if (ride != null) {
@@ -81,9 +68,6 @@ public class RideService {
         }
     }
     
-    /**
-     * Retourne l'etat d'une attraction.
-     */
     public RideState getState(String rideId) {
         RideActor ride = getRide(rideId);
         if (ride == null) {
@@ -99,9 +83,6 @@ public class RideService {
         );
     }
     
-    /**
-     * Retourne la liste des attractions disponibles.
-     */
     public Set<String> getAvailableRides() {
         return rides.keySet();
     }
@@ -114,8 +95,6 @@ public class RideService {
         return ride;
     }
     
-    // ========== DTO pour l'etat ==========
-    
     public record RideState(
             String rideId,
             int queueSize,
@@ -124,8 +103,6 @@ public class RideService {
             int cycleDurationSec,
             boolean closed
     ) {}
-    
-    // ========== Context simplifie ==========
     
     private static class SimpleActorContext implements ActorContext {
         @Override
@@ -143,7 +120,6 @@ public class RideService {
                 
                 @Override
                 public void tell(com.park.actor.core.Message message) {
-                    // Dans cette version simplifiee, on ne traite pas les messages asynchrones
                     System.out.println("[CONTEXT] Message ignore: " + message.getClass().getSimpleName());
                 }
             };

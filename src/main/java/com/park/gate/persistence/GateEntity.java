@@ -2,10 +2,6 @@ package com.park.gate.persistence;
 
 import java.time.Instant;
 
-/**
- * Entité représentant une porte du parc.
- * Stockée en mémoire (pas de JPA pour simplifier).
- */
 public class GateEntity {
     
     private Long id;
@@ -26,45 +22,14 @@ public class GateEntity {
         this.createdAt = Instant.now();
     }
     
-    // Getters et Setters
-    
-    public Long getId() {
-        return id;
-    }
-    
-    public void setId(Long id) {
-        this.id = id;
-    }
-    
-    public String getGateId() {
-        return gateId;
-    }
-    
-    public void setGateId(String gateId) {
-        this.gateId = gateId;
-    }
-    
-    public String getName() {
-        return name;
-    }
-    
-    public void setName(String name) {
-        this.name = name;
-    }
-    
-    public GateType getType() {
-        return type;
-    }
-    
-    public void setType(GateType type) {
-        this.type = type;
-    }
-    
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-    
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getGateId() { return gateId; }
+    public void setGateId(String gateId) { this.gateId = gateId; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public GateType getType() { return type; }
+    public void setType(GateType type) { this.type = type; }
+    public Instant getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 }

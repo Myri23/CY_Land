@@ -226,28 +226,29 @@ Resultat attendu : container `park-rabbitmq` en status "Up"
 ### Resultat attendu au demarrage
 
 ```
-###############################################
-#         CY_LAND PARK SERVICE READY          #
-###############################################
-
-  GATE SERVICE
+===========================================
+  GATE SERVICE READY
   Portes actives: 3
-  Endpoints:
-    POST /gate/{gateId}/scan?ticketId=XXX
-    GET  /gate/{gateId}/status
-    GET/POST/PUT/DELETE /admin/gates
-    GET/POST/DELETE /admin/tickets
 
-  RIDE SERVICE
+  SCAN ENDPOINTS:
+  - POST /gate/{gateId}/scan?ticketId=XXX
+  - GET  /gate/{gateId}/status
+
+  ADMIN ENDPOINTS:
+  - GET/POST/PUT/DELETE /admin/gates
+  - GET/POST/DELETE /admin/tickets
+  - GET /admin/tickets/valid-today
+  - GET /admin/tickets/{id}/validate?gateType=XXX
+===========================================
+===========================================
+  RIDE SERVICE READY
   Attractions actives: 3
-  Endpoints:
-    GET  /rides
-    GET  /rides/{rideId}/state
-    POST /rides/{rideId}/join?ticketId=XXX
-    POST /rides/{rideId}/start-cycle
-    POST /rides/{rideId}/report-fault
 
-###############################################
+  Attractions disponibles:
+  - RC (capacite: 20, duree: 60s)
+  - GR (capacite: 12, duree: 120s)
+  - VR (capacite: 8, duree: 180s)
+===========================================
 ```
 
 ---
@@ -833,7 +834,7 @@ Windows :
 |---------|------|----------------|
 | `GateActorTest.java` | Unitaire | Logique metier de l'acteur Gate : acceptation ticket, anti-doublon, snapshot |
 | `ActorRuntimeTest.java` | Unitaire | Framework d'acteurs : creation, lookup, traitement FIFO des messages |
-| `GateIntegrationTest.java` | Integration | Flux complet HTTP > Acteur > Publication evenement |
+| `GateIntegrationTest.java` | Integration | Flux complet HTTP -> Acteur -> Publication evenement |
 
 ### Resultat attendu
 
@@ -847,7 +848,7 @@ Windows :
 ## Structure du Projet
 
 ```
-gate-service/
+CY_Land/
 |-- src/main/java/com/park/
 |   |-- GateServiceApplication.java
 |   |

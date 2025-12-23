@@ -1,6 +1,5 @@
 package com.park.gate;
 
-import com.park.gate.domain.VisitorEntered;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Tests d'intégration de l'API Gate avec Spring Cloud Stream Test Binder.
- * Vérifie le flux complet : HTTP → Actor → Event Publishing
+ * Vérifie le flux complet : HTTP -> Actor -> Event Publishing
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -46,15 +45,12 @@ class GateIntegrationTest {
     @Test
     @DisplayName("Un scan valide doit publier un événement VisitorEntered")
     void scanShouldPublishEvent() throws Exception {
-        // Given
         String ticketId = "EVENT-TEST-" + System.currentTimeMillis();
         
-        // When
         mockMvc.perform(post("/gate/G1/scan")
                         .param("ticketId", ticketId))
                 .andExpect(status().isAccepted());
         
-        // Then - attendre un peu pour le traitement async
         Thread.sleep(100);
         
         Message<byte[]> message = outputDestination.receive(1000, "park.events");

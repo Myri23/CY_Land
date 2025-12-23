@@ -16,11 +16,9 @@ import java.util.Map;
 public class TicketAdminController {
     
     private final TicketRepository ticketRepository;
-    private final GateRepository gateRepository;
     
-    public TicketAdminController(TicketRepository ticketRepository, GateRepository gateRepository) {
+    public TicketAdminController(TicketRepository ticketRepository) {
         this.ticketRepository = ticketRepository;
-        this.gateRepository = gateRepository;
     }
     
     /**
@@ -101,7 +99,6 @@ public class TicketAdminController {
         
         return ticketRepository.findByTicketId(ticketId)
                 .map(ticket -> {
-                    // Verifier si deja utilise
                     if (ticket.isUsed()) {
                         return ResponseEntity.ok(Map.<String, Object>of(
                                 "valid", false,
@@ -110,7 +107,6 @@ public class TicketAdminController {
                         ));
                     }
                     
-                    // Verifier la date de validite
                     if (!ticket.isValidToday()) {
                         return ResponseEntity.ok(Map.<String, Object>of(
                                 "valid", false,
@@ -119,7 +115,6 @@ public class TicketAdminController {
                         ));
                     }
                     
-                    // Verifier l'acces au type de porte
                     if (!ticket.canAccessGate(gateType)) {
                         return ResponseEntity.ok(Map.<String, Object>of(
                                 "valid", false,

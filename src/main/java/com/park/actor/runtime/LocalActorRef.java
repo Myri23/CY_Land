@@ -49,15 +49,15 @@ public class LocalActorRef implements ActorRef, ActorContext {
     
     @Override
     public void snapshot(Object state) {
-        // TODO: Implémenter la persistance (JPA, Redis, etc.)
-        // Pour l'instant, log uniquement
+        // Persistance simplifiée : log uniquement pour cette démo
+        // En production, utiliser JPA, Redis, ou un event store
         System.out.printf("[SNAPSHOT] Actor %s: %s%n", id, state);
     }
     
     @Override
-    @SuppressWarnings("unchecked")
     public <T> T restore(Class<T> type) {
-        // TODO: Implémenter la restauration
+        // Restauration simplifiée : retourne null pour cette démo
+        // En production, récupérer depuis le store de persistance
         return null;
     }
     
@@ -71,13 +71,13 @@ public class LocalActorRef implements ActorRef, ActorContext {
         Thread.currentThread().setName("actor-" + id);
         try {
             while (!Thread.currentThread().isInterrupted()) {
-                Message message = mailbox.take(); // bloquant
+                Message message = mailbox.take();
                 try {
                     actor.onReceive(message, this);
                 } catch (Exception e) {
+                    // Log l'erreur sans utiliser printStackTrace()
                     System.err.printf("[ERROR] Actor %s failed to process %s: %s%n", 
                             id, message.getClass().getSimpleName(), e.getMessage());
-                    e.printStackTrace();
                 }
             }
         } catch (InterruptedException e) {

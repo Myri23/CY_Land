@@ -6,8 +6,6 @@ import com.park.actor.core.Message;
 import com.park.ride.messaging.in.CycleTick;
 import com.park.ride.messaging.in.ReportFault;
 import com.park.ride.messaging.in.StartCycle;
-import com.park.ride.messaging.out.CycleFinished;
-import com.park.ride.messaging.out.CycleStarted;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -51,20 +49,17 @@ public class RideActor implements Actor {
             return;
         }
         
-        // Transferer les passagers de la queue vers le cycle
         List<String> passengers = new ArrayList<>();
         while (!queue.isEmpty() && passengers.size() < capacity) {
             passengers.add(queue.removeFirst());
         }
         inCycle = passengers;
         
-        // Sauvegarder l'etat
         context.snapshot(new RideState(new ArrayList<>(queue), inCycle, closed));
         
         System.out.printf("[RIDE %s] Cycle demarre avec %d passagers: %s%n", 
                 rideId, inCycle.size(), inCycle);
         
-        // Simuler la fin du cycle (dans un vrai systeme, ce serait un scheduler)
         context.self().tell(new CycleTick());
     }
     
@@ -75,14 +70,10 @@ public class RideActor implements Actor {
         
         System.out.printf("[RIDE %s] Cycle termine pour %d passagers%n", rideId, inCycle.size());
         
-        // Vider le cycle
-        List<String> finished = new ArrayList<>(inCycle);
         inCycle = new ArrayList<>();
         
-        // Sauvegarder l'etat
         context.snapshot(new RideState(new ArrayList<>(queue), inCycle, closed));
         
-        // Demarrer automatiquement un nouveau cycle s'il y a des gens dans la queue
         if (!queue.isEmpty() && !closed) {
             System.out.printf("[RIDE %s] Demarrage automatique du prochain cycle (queue=%d)%n", 
                     rideId, queue.size());
@@ -96,8 +87,6 @@ public class RideActor implements Actor {
         closed = true;
         context.snapshot(new RideState(new ArrayList<>(queue), inCycle, closed));
     }
-    
-    // ========== Methodes publiques pour QueueManager ==========
     
     public void addToQueue(String ticketId) {
         if (!closed) {
@@ -114,8 +103,6 @@ public class RideActor implements Actor {
             inCycle.add(passengerId);
         }
     }
-    
-    // ========== Getters ==========
     
     public String getRideId() {
         return rideId;
@@ -148,8 +135,6 @@ public class RideActor implements Actor {
     public void setClosed(boolean closed) {
         this.closed = closed;
     }
-    
-    // ========== Classe interne pour le snapshot ==========
     
     public record RideState(List<String> queue, List<String> inCycle, boolean closed) {
     }

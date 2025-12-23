@@ -2,17 +2,10 @@ package com.park.gate.persistence;
 
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * Repository en mémoire pour les portes.
- * Simule une base de données pour simplifier le projet.
- */
 @Repository
 public class GateRepository {
     
@@ -20,7 +13,6 @@ public class GateRepository {
     private final AtomicLong idGenerator = new AtomicLong(1);
     
     public GateRepository() {
-        // Initialiser avec des portes par défaut
         save(new GateEntity(null, "G1", "Entree Principale", GateType.MAIN_GATE));
         save(new GateEntity(null, "G2", "Entree Secondaire", GateType.MAIN_GATE));
         save(new GateEntity(null, "VIP", "Entree VIP", GateType.VIP_GATE));
