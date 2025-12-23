@@ -13,7 +13,8 @@ import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.retry.RetryRegistry;
 import static org.assertj.core.api.Assertions.*;
 
 /**
@@ -27,7 +28,13 @@ class ActorFrameworkTest {
     @BeforeEach
     void setUp() {
         logger = new DefaultActorLogger("test-system", "logs/test");
-        actorSystem = new ActorSystemImpl("test-system", logger, Optional.empty(), WebClient.builder());
+        actorSystem = new ActorSystemImpl(
+        "test-system", 
+        logger, 
+        Optional.empty(), 
+        WebClient.builder(),
+        null,  // CircuitBreakerRegistry - null pour utiliser les défauts
+        null);   // RetryRegistry - null pour utiliser les défauts
     }
     
     @AfterEach

@@ -58,36 +58,35 @@ public class ResilienceConfig {
     }
     
     /**
-     * Configuration du Retry pour les appels inter-services.
-     * 
-     * - Maximum 3 tentatives
-     * - Délai exponentiel entre les tentatives
-     */
-    @Bean
-    public RetryRegistry retryRegistry() {
-        RetryConfig config = RetryConfig.custom()
-                // Nombre maximum de tentatives (incluant l'appel initial)
-                .maxAttempts(3)
-                // Délai initial entre les tentatives
-                .waitDuration(Duration.ofMillis(500))
-                // Backoff exponentiel : 500ms, 1s, 2s
-                .intervalFunction(io.github.resilience4j.core.IntervalFunction
-                        .ofExponentialBackoff(Duration.ofMillis(500), 2.0))
-                // Exceptions qui déclenchent un retry
-                .retryExceptions(
-                        java.io.IOException.class,
-                        java.util.concurrent.TimeoutException.class,
-                        org.springframework.web.reactive.function.client.WebClientRequestException.class
-                )
-                // Exceptions qui ne déclenchent pas de retry
-                .ignoreExceptions(
-                        IllegalArgumentException.class,
-                        IllegalStateException.class
-                )
-                .build();
-        
-        return RetryRegistry.of(config);
-    }
+ * Configuration du Retry pour les appels inter-services.
+ * 
+ * - Maximum 3 tentatives
+ * - Délai exponentiel entre les tentatives
+ */
+@Bean
+public RetryRegistry retryRegistry() {
+    RetryConfig config = RetryConfig.custom()
+            // Nombre maximum de tentatives (incluant l'appel initial)
+            .maxAttempts(3)
+            // Backoff exponentiel : 500ms, 1s, 2s
+            // NOTE: On utilise SEULEMENT intervalFunction, pas waitDuration
+            .intervalFunction(io.github.resilience4j.core.IntervalFunction
+                    .ofExponentialBackoff(Duration.ofMillis(500), 2.0))
+            // Exceptions qui déclenchent un retry
+            .retryExceptions(
+                    java.io.IOException.class,
+                    java.util.concurrent.TimeoutException.class,
+                    org.springframework.web.reactive.function.client.WebClientRequestException.class
+            )
+            // Exceptions qui ne déclenchent pas de retry
+            .ignoreExceptions(
+                    IllegalArgumentException.class,
+                    IllegalStateException.class
+            )
+            .build();
+    
+    return RetryRegistry.of(config);
+}
     
     /**
      * Circuit breaker dédié aux communications avec le Gate Service.
