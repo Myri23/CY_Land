@@ -1,8 +1,5 @@
 # References Bibliographiques
 
-Projet CY Land - Framework d'Acteurs Distribues
-Module JEE, ING2 Groupe 1 Equipe 6
-
 ---
 
 ## 1. Documentation Officielle
@@ -87,4 +84,3 @@ https://learning.postman.com/docs/getting-started/introduction/
 
 ---
 
-*Document prepare pour le module JEE, ING2 - Septembre 2025*
