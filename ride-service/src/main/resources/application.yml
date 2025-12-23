@@ -1,0 +1,57 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: ride-service
+
+  cloud:
+    stream:
+      default-binder: rabbit
+      bindings:
+        rideEvents-out-0:
+          destination: park.events
+          content-type: application/json
+        # Écoute les événements du Gate Service
+        visitorEvents-in-0:
+          destination: park.events
+          group: ride-service
+          content-type: application/json
+      rabbit:
+        bindings:
+          visitorEvents-in-0:
+            consumer:
+              binding-routing-key: 'gate.visitor.#'
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.uuid}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+  endpoint:
+    health:
+      show-details: always
+
+actor:
+  logging:
+    directory: logs/ride-service/actors
+
+logging:
+  level:
+    com.music: DEBUG

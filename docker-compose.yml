@@ -1,4 +1,7 @@
+version: '3.8'
+
 services:
+  # RabbitMQ pour la communication asynchrone
   rabbitmq:
     image: rabbitmq:3-management
     container_name: park-rabbitmq
@@ -13,3 +16,57 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - park-network
+
+  # Eureka Server pour la découverte de services
+  eureka-server:
+    build: ./eureka-server
+    container_name: park-eureka
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: curl -f http://localhost:8761/actuator/health || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - park-network
+
+  # Gate Service (Microservice 1)
+  gate-service:
+    build: ./gate-service
+    container_name: park-gate-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - park-network
+
+  # Ride Service (Microservice 2)
+  ride-service:
+    build: ./ride-service
+    container_name: park-ride-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - park-network
+
+networks:
+  park-network:
+    driver: bridge
