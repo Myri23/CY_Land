@@ -410,7 +410,7 @@ mvn test
 cd gate-service
 mvn test
 
-# Tests d'integration du Ride Service (15 tests)
+# Tests d'integration du Ride Service (16 tests)
 cd ride-service
 mvn test
 ```
@@ -420,7 +420,7 @@ mvn test
 ```
 [INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0  (actor-framework)
 [INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0  (gate-service)
-[INFO] Tests run: 15, Failures: 0, Errors: 0, Skipped: 0  (ride-service)
+[INFO] Tests run: 16, Failures: 0, Errors: 0, Skipped: 0  (ride-service)
 [INFO] BUILD SUCCESS
 ```
 
@@ -462,6 +462,7 @@ mvn test
 | shouldJoinQueue | Rejoindre la file d'attente |
 | shouldReturn404WhenJoiningUnknownRide | 404 pour join inexistant |
 | shouldStartCycleWithPassengers | Demarrer un cycle |
+| shouldFailStartCycleWithEmptyQueue | Echec cycle si queue vide |
 | shouldReportFault | Signaler une panne |
 | shouldRepairRide | Reparer une attraction |
 | shouldBlockRide | Bloquer une attraction |
