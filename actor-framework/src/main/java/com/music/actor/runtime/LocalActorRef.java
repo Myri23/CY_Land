@@ -458,13 +458,14 @@ public class LocalActorRef implements ActorRef, ActorContext {
     
     /**
      * Contexte spécial pour les requêtes ask.
+     * Public pour permettre l'accès depuis les tests et autres modules.
      */
-    private static class AskContext implements ActorContext {
+    public static class AskContext implements ActorContext {
         private final LocalActorRef delegate;
         private final String askId;
         private final ActorRef replyTo;
         
-        AskContext(LocalActorRef delegate, String askId, ActorRef replyTo) {
+        public AskContext(LocalActorRef delegate, String askId, ActorRef replyTo) {
             this.delegate = delegate;
             this.askId = askId;
             this.replyTo = replyTo;
