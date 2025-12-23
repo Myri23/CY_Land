@@ -10,8 +10,8 @@ Projet realise dans le cadre du module JEE, ING2 Groupe 1 Equipe 6
 
 Ce projet implemente un framework d'acteurs distribues inspire d'Akka. L'application de demonstration est CY Land, un systeme de gestion de parc d'attractions avec :
 
-- Gate Service : Gestion des entrees et validation des tickets
-- Ride Service : Gestion des attractions et files d'attente
+- Gate Service : Gestion des entrees, validation des tickets et reception des notifications
+- Ride Service : Gestion des attractions, files d'attente et signalement des pannes
 
 ---
 
@@ -40,6 +40,7 @@ Le tableau suivant montre comment notre projet repond aux exigences demandees :
 | Resilience4j | Circuit Breaker et Retry pour la tolerance aux pannes |
 | RabbitMQ | Communication par evenements entre services |
 | Docker | Conteneurisation des services |
+| Notification Handler | Acteur dedie pour la reception des notifications inter-services |
 
 ---
 
@@ -60,6 +61,8 @@ Le tableau suivant montre comment notre projet repond aux exigences demandees :
     | Acteurs:           |       | Acteurs:           |
     | - G1, G2, VIP      |       | - rc, gr, vr       |
     | - Scanner Pool     |       | - visitor-tracker  |
+    | - notification-    |       |                    |
+    |   handler          |       |                    |
     +---------+----------+       +----------+---------+
               |                             |
               +-------------+---------------+
@@ -100,6 +103,7 @@ docker run -d --name park-rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-manage
 Attendre 30 secondes que RabbitMQ demarre.
 
 ### 3. Compiler le projet
+
 Terminal 0 - Compilation Projet
 ```bash
 mvn clean install -DskipTests
@@ -186,6 +190,19 @@ curl -X POST "http://localhost:8082/rides/vr/report-fault?faultType=MECHANICAL&d
 curl -X POST "http://localhost:8082/rides/vr/repair"
 ```
 
+### Tester la communication inter-services
+
+```bash
+# Signaler une panne (le gate-service recoit la notification)
+curl -X POST "http://localhost:8082/rides/rc/report-fault?faultType=SAFETY&description=Test"
+
+# Verifier les acteurs du gate-service (notification-handler present)
+curl http://localhost:8081/actors
+
+# Reparer l'attraction
+curl -X POST "http://localhost:8082/rides/rc/repair"
+```
+
 ### Tester la gestion des acteurs
 
 ```bash
@@ -194,6 +211,9 @@ curl http://localhost:8081/actors
 
 # Details d'un acteur
 curl http://localhost:8081/actors/G1
+
+# Details du notification-handler
+curl http://localhost:8081/actors/notification-handler
 
 # Metriques systeme
 curl http://localhost:8081/actors/system/metrics
@@ -337,15 +357,24 @@ cy-land/
 |       |-- runtime/            # Implementations
 |       |-- supervision/        # Strategies de supervision
 |       |-- scalability/        # Auto-scaling
+|       |-- resilience/         # Configuration Resilience4j
 |       +-- logging/            # Logs
 |-- eureka-server/              # Service Discovery
 |-- gate-service/               # Microservice Portes
+|   +-- src/main/java/com/music/gate/
+|       |-- api/                # Controllers et Services
+|       |-- domain/             # Acteurs (GateActor, NotificationHandlerActor)
+|       +-- messaging/          # Publishers RabbitMQ
 +-- ride-service/               # Microservice Attractions
+    +-- src/main/java/com/music/ride/
+        |-- api/                # Controllers et Services
+        |-- domain/             # Acteurs (RideActor)
+        +-- messaging/          # Publishers et Consumers RabbitMQ
 ```
 
 ---
 
-### Script de Nettoyage Complet
+## Script de Nettoyage Complet
 
 Terminal 0 - MacOS/Linux :
 
@@ -371,7 +400,6 @@ if command -v docker &> /dev/null; then
     docker stop park-rabbitmq 2>/dev/null
     docker rm park-rabbitmq 2>/dev/null
 fi
-
 ```
 
 Terminal 0 - Windows PowerShell :
@@ -384,6 +412,8 @@ Remove-Item -Recurse -Force -ErrorAction SilentlyContinue */target
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue */logs
 Get-ChildItem -Recurse -Filter "*.log" | Remove-Item -Force
 ```
+
+---
 
 ## Arret des Services
 
@@ -428,6 +458,12 @@ java -version  # Verifier Java 21+
 ## Auteurs
 
 Equipe 6 - ING2 Groupe 1
+
+- Paul Pitiot
+- Thomas Rykaczewski
+- Besma Saidi
+- Myriam Saadi
+- Ines Ribar
 
 ---
 
