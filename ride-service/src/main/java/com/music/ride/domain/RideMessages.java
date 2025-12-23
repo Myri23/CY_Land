@@ -6,9 +6,9 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Messages utilisés par les acteurs Ride.
+ * Messages utilises par les acteurs Ride.
  */
-public sealed interface RideMessages {
+public interface RideMessages {
     
     /**
      * Message pour rejoindre la file d'attente.
@@ -16,7 +16,7 @@ public sealed interface RideMessages {
     record JoinQueue(String ticketId, String rideId) implements Message {}
     
     /**
-     * Message pour démarrer un cycle.
+     * Message pour demarrer un cycle.
      */
     record StartCycle(String rideId) implements Message {}
     
@@ -31,17 +31,17 @@ public sealed interface RideMessages {
     record ReportFault(String rideId, FaultType faultType, String description) implements Message {}
     
     /**
-     * Message pour réparer une attraction.
+     * Message pour reparer une attraction.
      */
     record RepairComplete(String rideId) implements Message {}
     
     /**
-     * Message pour obtenir l'état d'une attraction.
+     * Message pour obtenir l'etat d'une attraction.
      */
     record GetState(String rideId) implements Message {}
     
     /**
-     * Réponse avec l'état d'une attraction.
+     * Reponse avec l'etat d'une attraction.
      */
     record RideState(
             String rideId,
@@ -55,7 +55,7 @@ public sealed interface RideMessages {
     ) implements Message {}
     
     /**
-     * Événement émis quand un cycle démarre.
+     * Evenement emis quand un cycle demarre.
      */
     record CycleStarted(
             String rideId,
@@ -64,7 +64,7 @@ public sealed interface RideMessages {
     ) implements Message {}
     
     /**
-     * Événement émis quand un cycle se termine.
+     * Evenement emis quand un cycle se termine.
      */
     record CycleFinished(
             String rideId,
@@ -73,7 +73,7 @@ public sealed interface RideMessages {
     ) implements Message {}
     
     /**
-     * Notification d'entrée d'un visiteur (depuis Gate Service).
+     * Notification d'entree d'un visiteur (depuis Gate Service).
      */
     record VisitorEntryNotification(
             String ticketId,

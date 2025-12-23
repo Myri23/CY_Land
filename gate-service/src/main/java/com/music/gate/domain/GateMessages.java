@@ -5,22 +5,22 @@ import com.music.actor.core.Message;
 import java.time.Instant;
 
 /**
- * Messages utilisés par les acteurs Gate.
+ * Messages utilises par les acteurs Gate.
  */
-public sealed interface GateMessages {
+public interface GateMessages {
     
     /**
-     * Message pour scanner un ticket à une porte.
+     * Message pour scanner un ticket a une porte.
      */
     record ScanTicket(String ticketId, String gateId) implements Message {}
     
     /**
-     * Message pour vérifier le statut d'une porte.
+     * Message pour verifier le statut d'une porte.
      */
     record GetStatus(String gateId) implements Message {}
     
     /**
-     * Réponse au statut d'une porte.
+     * Reponse au statut d'une porte.
      */
     record GateStatus(
             String gateId,
@@ -32,7 +32,7 @@ public sealed interface GateMessages {
     ) implements Message {}
     
     /**
-     * Événement émis quand un visiteur entre.
+     * Evenement emis quand un visiteur entre.
      */
     record VisitorEntered(
             String ticketId,
@@ -45,7 +45,7 @@ public sealed interface GateMessages {
     }
     
     /**
-     * Événement émis quand un ticket est refusé.
+     * Evenement emis quand un ticket est refuse.
      */
     record TicketRejected(
             String ticketId,
@@ -59,8 +59,8 @@ public sealed interface GateMessages {
     }
     
     /**
-     * Message pour notifier une attraction de l'entrée d'un visiteur.
-     * Utilisé pour la communication inter-services.
+     * Message pour notifier une attraction de l'entree d'un visiteur.
+     * Utilise pour la communication inter-services.
      */
     record NotifyVisitorEntry(
             String ticketId,
