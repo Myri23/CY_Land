@@ -45,12 +45,13 @@ Le tableau ci-dessous montre comment le projet repond a chaque exigence du cahie
 | Communication asynchrone (tell) | Pattern fire-and-forget via `ActorRef.tell(message)` | `actor-framework/src/main/java/com/music/actor/core/ActorRef.java` |
 | Communication synchrone (ask) | Pattern request-response via `ActorRef.ask(message, timeout)` retournant `CompletableFuture` | `actor-framework/src/main/java/com/music/actor/runtime/LocalActorRef.java` |
 | Communication intra-microservice | Acteurs locaux communiquant via mailbox | `actor-framework/src/main/java/com/music/actor/runtime/LocalActorRef.java` |
-| Communication inter-microservices | RemoteActorRef + Eureka discovery + WebClient | `actor-framework/src/main/java/com/music/actor/runtime/RemoteActorRef.java` |
+| Communication inter-microservices | RemoteActorRef + Eureka discovery + WebClient + Resilience4j | `actor-framework/src/main/java/com/music/actor/runtime/RemoteActorRef.java` |
 | Supervision et tolerance aux pannes | OneForOneStrategy et AllForOneStrategy avec directives RESUME, RESTART, STOP, ESCALATE | `actor-framework/src/main/java/com/music/actor/supervision/` |
-| Scalabilite | AutoScalingActorPool avec scale-up/down automatique | `actor-framework/src/main/java/com/music/actor/scalability/AutoScalingActorPool.java` |
+| Resilience inter-services | Circuit Breaker et Retry avec Resilience4j | `actor-framework/src/main/java/com/music/actor/resilience/ResilienceConfig.java` |
+| Scalabilite | AutoScalingActorPool avec scale-up/down automatique et compteur de messages fonctionnel | `actor-framework/src/main/java/com/music/actor/scalability/AutoScalingActorPool.java` |
 | Systeme de logs | Logs structures JSON par jour avec trace complete | `actor-framework/src/main/java/com/music/actor/logging/DefaultActorLogger.java` |
 | Application differente du restaurant | Parc d'attractions avec portes et attractions | `gate-service/` et `ride-service/` |
-| Tests unitaires et integration | JUnit 5 + Spring Boot Test + MockMvc | `actor-framework/src/test/`, `gate-service/src/test/`, `ride-service/src/test/` |
+| Tests unitaires et integration | JUnit 5 + Spring Boot Test + MockMvc + Awaitility | `actor-framework/src/test/`, `gate-service/src/test/`, `ride-service/src/test/` |
 | Collection Postman | Collection complete avec scenarios de test | `postman/CY_Land_API_Collection.postman_collection.json` |
 | Diagrammes d'architecture | Diagrammes Mermaid detailles | `docs/ARCHITECTURE.md` |
 | References bibliographiques | Format IEEE academique | `docs/REFERENCES.md` |
@@ -60,6 +61,7 @@ Le tableau ci-dessous montre comment le projet repond a chaque exigence du cahie
 | Fonctionnalite | Description |
 |----------------|-------------|
 | Virtual Threads (Java 21+) | Utilisation des threads virtuels pour une meilleure scalabilite |
+| Resilience4j | Circuit Breaker et Retry pour la tolerance aux pannes inter-services |
 | Snapshot/Restore | Persistance de l'etat des acteurs pour recuperation apres crash |
 | Scheduling | Planification de messages avec `scheduleOnce()` et `schedulePeriodic()` |
 | Messaging RabbitMQ | Communication evenementielle entre services via Spring Cloud Stream |
@@ -94,6 +96,11 @@ Pour les diagrammes detailles (Mermaid), consultez `docs/ARCHITECTURE.md`.
 |  |   Auto-Scaling Pool        |  |  |  |   Visitor Tracker          |  |
 |  |   (2-10 scanner workers)   |  |  |  |   (inter-service comm)     |  |
 |  +----------------------------+  |  |  +----------------------------+  |
+|                                  |  |                                  |
+|  +----------------------------+  |  |  +----------------------------+  |
+|  |   Resilience4j             |  |  |  |   Resilience4j             |  |
+|  |   Circuit Breaker + Retry  |  |  |  |   Circuit Breaker + Retry  |  |
+|  +----------------------------+  |  |  +----------------------------+  |
 +-----------------+----------------+  +-----------------+----------------+
                   |                                     |
                   +----------------+--------------------+
@@ -112,6 +119,14 @@ Pour les diagrammes detailles (Mermaid), consultez `docs/ARCHITECTURE.md`.
 3. Ride Service consomme l'evenement -> Met a jour le tracker de visiteurs
 4. Visiteur rejoint une file -> RideActor gere la queue
 5. Cycle demarre -> Passagers charges, evenement publie
+
+### Tolerance aux Pannes Inter-Services
+
+Le framework utilise Resilience4j pour garantir la resilience des communications :
+
+- **Circuit Breaker** : Ouvre le circuit apres 5 echecs consecutifs, reste ouvert 30 secondes
+- **Retry** : 3 tentatives avec backoff exponentiel (500ms, 1s, 2s)
+- **Monitoring** : Endpoints `/resilience/*` pour surveiller l'etat des circuits
 
 ---
 
@@ -334,6 +349,19 @@ curl http://localhost:8081/actors/system/metrics
 curl http://localhost:8082/actors/system/metrics
 ```
 
+### Tester l'API de Resilience
+
+```bash
+# Liste des circuit breakers
+curl http://localhost:8081/resilience/circuit-breakers
+
+# Sante des communications inter-services
+curl http://localhost:8081/resilience/health
+
+# Metriques des acteurs distants
+curl http://localhost:8081/resilience/remote-actors
+```
+
 ### Verifier les Logs
 
 macOS/Linux :
@@ -406,7 +434,7 @@ mvn test
 cd actor-framework
 mvn test
 
-# Tests d'integration du Gate Service (8 tests)
+# Tests d'integration du Gate Service (18 tests)
 cd gate-service
 mvn test
 
@@ -419,14 +447,14 @@ mvn test
 
 ```
 [INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0  (actor-framework)
-[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0  (gate-service)
+[INFO] Tests run: 18, Failures: 0, Errors: 0, Skipped: 0  (gate-service)
 [INFO] Tests run: 16, Failures: 0, Errors: 0, Skipped: 0  (ride-service)
 [INFO] BUILD SUCCESS
 ```
 
 ### Description des Tests
 
-#### Tests du Framework (ActorFrameworkTest.java)
+#### Tests du Framework (ActorFrameworkTest.java) - 8 tests
 
 | Test | Description |
 |------|-------------|
@@ -439,7 +467,7 @@ mvn test
 | shouldRestartActorAfterError | Teste la supervision et redemarrage |
 | shouldStopActor | Verifie l'arret propre d'un acteur |
 
-#### Tests d'Integration Gate Service (GateIntegrationTest.java)
+#### Tests d'Integration Gate Service (GateIntegrationTest.java) - 8 tests
 
 | Test | Description |
 |------|-------------|
@@ -452,7 +480,22 @@ mvn test
 | shouldListActors | Verifie l'API de gestion |
 | shouldReturnSystemMetrics | Verifie les metriques |
 
-#### Tests d'Integration Ride Service (RideIntegrationTest.java)
+#### Tests d'Integration Inter-Services (InterServiceIntegrationTest.java) - 10 tests
+
+| Test | Description |
+|------|-------------|
+| scanShouldPublishVisitorEnteredEvent | Verifie la publication d'evenements VisitorEntered vers RabbitMQ |
+| rejectedTicketShouldPublishRejectionEvent | Verifie les evenements de rejet de tickets |
+| shouldConsumeExternalEvents | Teste la consommation d'evenements externes |
+| fullFlowScanToEventToTracking | Flux complet : scan -> evenement -> tracking |
+| multipleTicketsShouldGenerateSequentialEvents | Verifie les evenements multiples sequentiels |
+| shouldContinueWhenRemoteServiceUnavailable | Teste la resilience quand le Ride Service est indisponible |
+| blockingGateShouldNotAffectPendingEvents | Verifie que le blocage n'affecte pas les evenements en cours |
+| systemMetricsShouldIncludeLocalActors | Verifie que les metriques incluent les acteurs locaux |
+| scannerPoolMetricsShouldBeAvailable | Verifie les metriques du pool de scanners |
+| shouldHandleHighLoadOfScans | Test de charge avec 50 scans simultanes |
+
+#### Tests d'Integration Ride Service (RideIntegrationTest.java) - 16 tests
 
 | Test | Description |
 |------|-------------|
@@ -472,6 +515,17 @@ mvn test
 | shouldReturnSystemMetrics | Metriques systeme |
 | shouldHandleInvalidFaultType | Type de panne invalide |
 | shouldAcceptAllFaultTypes | Tous les types de pannes |
+
+### Bibliotheques de Test Utilisees
+
+| Bibliotheque | Usage |
+|--------------|-------|
+| JUnit 5 | Framework de tests |
+| Spring Boot Test | Tests d'integration Spring |
+| MockMvc | Tests des endpoints REST |
+| AssertJ | Assertions fluides |
+| Awaitility | Tests asynchrones avec attente conditionnelle |
+| Spring Cloud Stream Test Binder | Simulation de RabbitMQ pour les tests |
 
 ---
 
@@ -517,6 +571,15 @@ mvn test
 | POST | /actors/{id}/ask | Requete synchrone (inter-service) |
 | GET | /actors/system/metrics | Metriques du systeme |
 
+### API de Resilience (tous les services)
+
+| Methode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | /resilience/circuit-breakers | Liste tous les circuit breakers |
+| GET | /resilience/circuit-breakers/{name} | Details d'un circuit breaker |
+| GET | /resilience/health | Sante des communications inter-services |
+| GET | /resilience/remote-actors | Metriques des acteurs distants |
+
 ---
 
 ## Concepts Spring Boot Utilises
@@ -533,6 +596,7 @@ mvn test
 | @PostConstruct, @PreDestroy | Hooks de cycle de vie |
 | @Value | Injection de configuration |
 | @Validated | Validation des parametres |
+| @Configuration | Configuration Resilience4j |
 
 ### Spring Cloud
 
@@ -542,6 +606,15 @@ mvn test
 | Spring Cloud Stream | Messaging avec RabbitMQ |
 | Spring Cloud LoadBalancer | Equilibrage de charge |
 | WebClient | Communication HTTP reactive |
+
+### Resilience4j
+
+| Composant | Utilisation |
+|-----------|-------------|
+| CircuitBreaker | Protection contre les pannes en cascade |
+| Retry | Reessai automatique avec backoff exponentiel |
+| CircuitBreakerRegistry | Gestion centralisee des circuit breakers |
+| RetryRegistry | Gestion centralisee des politiques de retry |
 
 ### Fonctionnalites Java 21+
 
@@ -561,6 +634,7 @@ mvn test
 | Fire-and-Forget | Methode tell() |
 | Request-Response | Methode ask() avec timeout |
 | Supervision | Strategies OneForOne et AllForOne |
+| Circuit Breaker | Resilience4j pour la tolerance aux pannes |
 | Event Sourcing | Publication d'evenements via RabbitMQ |
 | CQRS | Separation lecture/ecriture via evenements |
 
@@ -586,9 +660,10 @@ cy-land/
 |   |-- Dockerfile
 |   +-- src/main/java/com/music/actor/
 |       |-- core/                    # Interfaces de base
-|       |-- runtime/                 # Implementations
+|       |-- runtime/                 # Implementations (LocalActorRef, RemoteActorRef)
 |       |-- supervision/             # Strategies de supervision
 |       |-- scalability/             # Auto-scaling
+|       |-- resilience/              # Configuration Resilience4j
 |       +-- logging/                 # Logs structures
 |
 |-- eureka-server/                   # MODULE 2 : Service Discovery
@@ -602,6 +677,8 @@ cy-land/
 |   +-- src/
 |       |-- main/java/com/music/gate/
 |       +-- test/java/com/music/gate/
+|           |-- GateIntegrationTest.java
+|           +-- InterServiceIntegrationTest.java
 |
 +-- ride-service/                    # MODULE 4 : Microservice Attractions
     |-- pom.xml
@@ -609,6 +686,7 @@ cy-land/
     +-- src/
         |-- main/java/com/music/ride/
         +-- test/java/com/music/ride/
+            +-- RideIntegrationTest.java
 ```
 
 ---
@@ -779,6 +857,14 @@ kill -9 <PID>  # macOS/Linux
 taskkill /PID <PID> /F  # Windows
 ```
 
+### Circuit Breaker en etat OPEN
+
+Si les communications inter-services echouent avec un circuit breaker ouvert :
+
+1. Verifier que le service cible est demarre
+2. Attendre 30 secondes (duree d'ouverture du circuit)
+3. Consulter les metriques : `curl http://localhost:8081/resilience/health`
+
 ---
 
 ## References
@@ -792,6 +878,7 @@ Pour les references bibliographiques completes au format IEEE, consultez `docs/R
 - Spring Cloud Netflix Eureka : https://spring.io/projects/spring-cloud-netflix
 - Spring Cloud Stream : https://spring.io/projects/spring-cloud-stream
 - RabbitMQ Tutorials : https://www.rabbitmq.com/tutorials
+- Resilience4j Documentation : https://resilience4j.readme.io/docs
 
 ### Java 21+
 
@@ -803,6 +890,7 @@ Pour les references bibliographiques completes au format IEEE, consultez `docs/R
 
 - Actor Model Explained : https://www.brianstorti.com/the-actor-model/
 - Building Microservices with Spring Boot : https://spring.io/guides/gs/microservices
+- Circuit Breaker Pattern : https://martinfowler.com/bliki/CircuitBreaker.html
 
 ---
 
