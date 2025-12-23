@@ -24,7 +24,7 @@
   ],
   "item": [
     {
-      "name": "🏥 Health Checks",
+      "name": " Health Checks",
       "item": [
         {
           "name": "Eureka Health",
@@ -69,7 +69,7 @@
       "description": "Endpoints de vérification de santé des services"
     },
     {
-      "name": "🚪 Gate Service",
+      "name": "Gate Service",
       "item": [
         {
           "name": "Liste des portes",
@@ -223,7 +223,7 @@
       "description": "Endpoints du Gate Service pour la gestion des portes d'entrée"
     },
     {
-      "name": "🎢 Ride Service",
+      "name": "Ride Service",
       "item": [
         {
           "name": "Liste des attractions",
@@ -352,7 +352,7 @@
       "description": "Endpoints du Ride Service pour la gestion des attractions"
     },
     {
-      "name": "🤖 Actor Management",
+      "name": "Actor Management",
       "item": [
         {
           "name": "Liste des acteurs (Gate)",
@@ -462,7 +462,7 @@
       "description": "API de gestion et monitoring des acteurs (disponible sur tous les services)"
     },
     {
-      "name": "📊 Eureka Discovery",
+      "name": "Eureka Discovery",
       "item": [
         {
           "name": "Dashboard Eureka",
@@ -535,7 +535,7 @@
       "description": "API Eureka pour la découverte de services"
     },
     {
-      "name": "🔬 Scénarios de Test",
+      "name": "Scénarios de Test",
       "item": [
         {
           "name": "Scénario 1: Entrée visiteur complet",
