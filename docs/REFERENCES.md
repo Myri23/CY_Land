@@ -51,36 +51,54 @@ https://www.brianstorti.com/the-actor-model/
 [13] M. Fowler, "Circuit Breaker Pattern", 2014.
 https://martinfowler.com/bliki/CircuitBreaker.html
 
+[14] C. Hewitt, P. Bishop, R. Steiger, "A Universal Modular Actor Formalism for Artificial Intelligence", 1973.
+https://dl.acm.org/doi/10.5555/1624775.1624804
+
 ---
 
 ## 4. Java 21
 
-[14] JEP 444: Virtual Threads, OpenJDK, 2023.
+[15] JEP 444: Virtual Threads, OpenJDK, 2023.
 https://openjdk.org/jeps/444
 
-[15] JEP 441: Pattern Matching for switch, OpenJDK, 2023.
+[16] JEP 441: Pattern Matching for switch, OpenJDK, 2023.
 https://openjdk.org/jeps/441
+
+[17] Oracle Java 21 Documentation
+https://docs.oracle.com/en/java/javase/21/
 
 ---
 
 ## 5. Outils
 
-[16] Docker Documentation
+[18] Docker Documentation
 https://docs.docker.com/
 
-[17] JUnit 5 User Guide
+[19] JUnit 5 User Guide
 https://junit.org/junit5/docs/current/user-guide/
 
-[18] Postman Learning Center
+[20] Postman Learning Center
 https://learning.postman.com/docs/getting-started/introduction/
 
----
-
-## 6. Cours et Supports
-
-[19] Cours Spring Boot, Module JEE, CY Tech, 2024-2025.
-
-[20] TP Microservices, Module JEE, CY Tech, 2024-2025.
+[21] Maven Documentation
+https://maven.apache.org/guides/
 
 ---
 
+## 6. Patterns et Architecture
+
+[22] M. Fowler, "Patterns of Enterprise Application Architecture", Addison-Wesley, 2002.
+
+[23] C. Richardson, "Microservices Patterns", Manning Publications, 2018.
+
+[24] S. Newman, "Building Microservices", O'Reilly Media, 2021.
+
+---
+
+## 7. Cours et Supports
+
+[25] Cours Spring Boot, Module JEE, CY Tech, 2024-2025.
+
+[26] TP Microservices, Module JEE, CY Tech, 2024-2025.
+
+---
