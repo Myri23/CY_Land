@@ -11,18 +11,16 @@
     </parent>
 
     <artifactId>ride-service</artifactId>
-    <n>Ride Service</n>
+    <name>Ride Service</name>
     <description>Microservice de gestion des attractions du parc</description>
 
     <dependencies>
-        <!-- Actor Framework -->
         <dependency>
             <groupId>com.music</groupId>
             <artifactId>actor-framework</artifactId>
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Spring Boot -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -38,7 +36,6 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- Spring Cloud -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
@@ -54,7 +51,6 @@
             <artifactId>spring-cloud-stream-binder-rabbit</artifactId>
         </dependency>
 
-        <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
