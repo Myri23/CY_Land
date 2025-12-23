@@ -345,6 +345,46 @@ cy-land/
 
 ---
 
+### Script de Nettoyage Complet
+
+Terminal 0 (macOS/Linux) :
+
+```bash
+# Maven clean
+mvn clean -q
+
+# Supprimer les logs
+rm -rf logs/
+rm -rf */logs/
+rm -rf **/logs/
+
+# Supprimer les fichiers target restants
+rm -rf */target/
+rm -rf **/target/
+
+# Supprimer les fichiers de log individuels
+find . -name "*.log" -type f -delete
+find . -name "*.jsonl" -type f -delete
+
+# Docker cleanup (optionnel)
+if command -v docker &> /dev/null; then
+    docker stop park-rabbitmq 2>/dev/null
+    docker rm park-rabbitmq 2>/dev/null
+fi
+
+```
+
+Terminal 0 / Windows PowerShell :
+
+```powershell
+# Nettoyage Maven + logs + fichiers generes
+mvn clean
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue logs
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue */target
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue */logs
+Get-ChildItem -Recurse -Filter "*.log" | Remove-Item -Force
+```
+
 ## Arret des Services
 
 ```bash
