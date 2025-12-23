@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # RabbitMQ pour la communication asynchrone
   rabbitmq:
@@ -19,7 +17,7 @@ services:
     networks:
       - park-network
 
-  # Eureka Server pour la découverte de services
+  # Eureka Server pour la decouverte de services
   eureka-server:
     build: ./eureka-server
     container_name: park-eureka
