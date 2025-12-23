@@ -4,7 +4,10 @@ import com.music.actor.core.*;
 import com.music.actor.logging.ActorLogger;
 import com.music.actor.supervision.OneForOneStrategy;
 import com.music.actor.supervision.SupervisorStrategy;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.retry.RetryRegistry;
 import jakarta.annotation.PreDestroy;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
@@ -17,12 +20,18 @@ import java.util.concurrent.*;
 /**
  * Implémentation complète du système d'acteurs.
  * 
+ * AMÉLIORATIONS v2.0 :
+ * - Intégration Resilience4j pour Circuit Breaker et Retry
+ * - Métriques de santé des communications inter-services
+ * - Gestion améliorée des erreurs de communication
+ * 
  * Fonctionnalités :
  * - Gestion du cycle de vie des acteurs
  * - Communication locale et distante
  * - Découverte de services via Eureka
  * - Supervision hiérarchique
  * - Blocage/déblocage des acteurs
+ * - Tolérance aux pannes avec Circuit Breaker
  */
 @Component
 public class ActorSystemImpl implements ActorSystem {
@@ -35,20 +44,35 @@ public class ActorSystemImpl implements ActorSystem {
     private final WebClient.Builder webClientBuilder;
     private final SupervisorStrategy defaultStrategy;
     
+    // Resilience4j registries
+    private final CircuitBreakerRegistry circuitBreakerRegistry;
+    private final RetryRegistry retryRegistry;
+    
     private final Set<String> blockedActors;
     private volatile boolean terminating = false;
     
+    @Autowired
     public ActorSystemImpl(
             @Value("${spring.application.name:actor-system}") String systemName,
             ActorLogger logger,
             Optional<DiscoveryClient> discoveryClient,
-            WebClient.Builder webClientBuilder) {
+            WebClient.Builder webClientBuilder,
+            @Autowired(required = false) CircuitBreakerRegistry circuitBreakerRegistry,
+            @Autowired(required = false) RetryRegistry retryRegistry) {
         
         this.systemName = systemName;
         this.logger = logger;
         this.discoveryClient = discoveryClient.orElse(null);
         this.webClientBuilder = webClientBuilder;
         this.defaultStrategy = new OneForOneStrategy();
+        
+        // Utiliser les registries par défaut si non injectés
+        this.circuitBreakerRegistry = circuitBreakerRegistry != null 
+                ? circuitBreakerRegistry 
+                : CircuitBreakerRegistry.ofDefaults();
+        this.retryRegistry = retryRegistry != null 
+                ? retryRegistry 
+                : RetryRegistry.ofDefaults();
         
         this.actors = new ConcurrentHashMap<>();
         this.blockedActors = ConcurrentHashMap.newKeySet();
@@ -59,7 +83,7 @@ public class ActorSystemImpl implements ActorSystem {
         );
         
         logger.log(ActorLogger.LogLevel.INFO, "system",
-                "Actor system '%s' initialized with virtual threads", systemName);
+                "Actor system '%s' initialized with virtual threads and Resilience4j", systemName);
     }
     
     @Override
@@ -114,9 +138,18 @@ public class ActorSystemImpl implements ActorSystem {
         WebClient webClient = webClientBuilder.baseUrl(serviceUrl).build();
         
         logger.log(ActorLogger.LogLevel.DEBUG, actorId,
-                "Creating remote actor ref to %s at %s", serviceName, serviceUrl);
+                "Creating remote actor ref to %s at %s (with Circuit Breaker)", serviceName, serviceUrl);
         
-        return new RemoteActorRef(actorId, serviceName, serviceUrl, webClient, logger);
+        // AMÉLIORATION : Utiliser le nouveau constructeur avec Resilience4j
+        return new RemoteActorRef(
+                actorId, 
+                serviceName, 
+                serviceUrl, 
+                webClient, 
+                logger,
+                circuitBreakerRegistry,
+                retryRegistry
+        );
     }
     
     @Override
@@ -209,6 +242,20 @@ public class ActorSystemImpl implements ActorSystem {
     }
     
     /**
+     * Retourne le registry des Circuit Breakers.
+     */
+    public CircuitBreakerRegistry getCircuitBreakerRegistry() {
+        return circuitBreakerRegistry;
+    }
+    
+    /**
+     * Retourne le registry des Retry.
+     */
+    public RetryRegistry getRetryRegistry() {
+        return retryRegistry;
+    }
+    
+    /**
      * Retourne les métriques du système.
      */
     public SystemMetrics getMetrics() {
@@ -220,12 +267,18 @@ public class ActorSystemImpl implements ActorSystem {
                 .filter(a -> a.getState() == ActorState.RUNNING)
                 .count();
         
+        // Ajouter les métriques de résilience
+        long openCircuitBreakers = circuitBreakerRegistry.getAllCircuitBreakers().stream()
+                .filter(cb -> cb.getState() == io.github.resilience4j.circuitbreaker.CircuitBreaker.State.OPEN)
+                .count();
+        
         return new SystemMetrics(
                 systemName,
                 actors.size(),
                 (int) runningCount,
                 blockedActors.size(),
-                totalMailboxSize
+                totalMailboxSize,
+                (int) openCircuitBreakers
         );
     }
     
@@ -234,6 +287,7 @@ public class ActorSystemImpl implements ActorSystem {
             int totalActors,
             int runningActors,
             int blockedActors,
-            int totalPendingMessages
+            int totalPendingMessages,
+            int openCircuitBreakers
     ) {}
 }

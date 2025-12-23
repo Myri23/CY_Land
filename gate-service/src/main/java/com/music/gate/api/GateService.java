@@ -3,6 +3,7 @@ package com.music.gate.api;
 import com.music.actor.core.ActorRef;
 import com.music.actor.core.ActorSystem;
 import com.music.actor.logging.ActorLogger;
+import com.music.actor.runtime.LocalActorRef;
 import com.music.actor.scalability.AutoScalingActorPool;
 import com.music.actor.scalability.ScalingConfig;
 import com.music.actor.supervision.OneForOneStrategy;
@@ -20,6 +21,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Service de gestion des portes avec auto-scaling.
+ * 
+ * CORRECTION : Implémentation du compteur de messages en attente
+ * pour un auto-scaling fonctionnel basé sur la charge réelle.
  */
 @Service
 public class GateService {
@@ -51,6 +55,8 @@ public class GateService {
                 .scaleUpThreshold(70)
                 .scaleDownThreshold(20)
                 .cooldownPeriod(30_000)
+                .checkInterval(5_000)
+                .messagesPerActorThreshold(50)
                 .build();
         
         scannerPool = new AutoScalingActorPool(
@@ -59,10 +65,27 @@ public class GateService {
                 id -> new TicketScannerActor(id, eventPublisher),
                 config,
                 logger,
-                ref -> 0 // TODO: implémenter le comptage des messages en attente
+                // CORRECTION : Implémentation réelle du compteur de messages en attente
+                this::getActorMailboxSize
         );
         
         printStartupBanner();
+    }
+    
+    /**
+     * CORRECTION : Méthode pour obtenir la taille de la mailbox d'un acteur.
+     * Utilisée par l'AutoScalingActorPool pour mesurer la charge.
+     * 
+     * @param ref Référence vers l'acteur
+     * @return Nombre de messages en attente dans la mailbox
+     */
+    private int getActorMailboxSize(ActorRef ref) {
+        if (ref instanceof LocalActorRef localRef) {
+            return localRef.mailboxSize();
+        }
+        // Pour les acteurs distants, on ne peut pas mesurer directement
+        // On retourne 0, ce qui est acceptable car le scaling se fait localement
+        return 0;
     }
     
     /**
@@ -156,11 +179,33 @@ public class GateService {
         return Map.copyOf(gateActors);
     }
     
+    /**
+     * Retourne les statistiques de charge des acteurs.
+     * Utile pour le monitoring et le debugging de l'auto-scaling.
+     */
+    public Map<String, Integer> getActorLoadStats() {
+        Map<String, Integer> stats = new ConcurrentHashMap<>();
+        
+        // Statistiques des portes
+        for (Map.Entry<String, ActorRef> entry : gateActors.entrySet()) {
+            stats.put("gate-" + entry.getKey(), getActorMailboxSize(entry.getValue()));
+        }
+        
+        // Statistiques du pool de scanners
+        int poolIndex = 0;
+        for (ActorRef scanner : scannerPool.getAllActors()) {
+            stats.put("scanner-" + poolIndex++, getActorMailboxSize(scanner));
+        }
+        
+        return stats;
+    }
+    
     private void printStartupBanner() {
         System.out.println("===========================================");
         System.out.println("  GATE SERVICE READY");
         System.out.println("  Gates: " + gateActors.size());
         System.out.println("  Scanner Pool: " + scannerPool.size() + " workers");
+        System.out.println("  Auto-scaling: ENABLED (2-10 workers)");
         System.out.println();
         System.out.println("  ENDPOINTS:");
         System.out.println("  - POST /gate/{gateId}/scan?ticketId=XXX");
@@ -169,6 +214,7 @@ public class GateService {
         System.out.println("  - POST /gate/{gateId}/block");
         System.out.println("  - POST /gate/{gateId}/unblock");
         System.out.println("  - GET  /actors (actor management)");
+        System.out.println("  - GET  /gate/pool/metrics (scaling metrics)");
         System.out.println("===========================================");
     }
     
