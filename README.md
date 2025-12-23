@@ -2,7 +2,7 @@
 
 Framework d'acteurs distribues inspire d'Akka, developpe avec Spring Boot pour la gestion d'un parc d'attractions.
 
-Projet realise dans le cadre du module JEE, ING2, GI - 2025
+Projet realise dans le cadre du module JEE, ING2 Groupe 1 Equipe 6 
 
 ---
 
@@ -116,7 +116,7 @@ Le tableau ci-dessous montre comment le projet repond a chaque exigence du cahie
 |-------|-----------------|--------------|
 | Java JDK | 21+ | `java -version` |
 | Maven | 3.9+ | `mvn -version` |
-| Docker | 24+ | `docker --version` |
+| Docker Desktop | 24+ | `docker --version` |
 | Git | 2.x | `git --version` |
 
 ### Installation des Prerequis
@@ -209,21 +209,20 @@ docker --version
 
 ```bash
 git clone <repository-url>
-cd cy-land
+cd CY_Land
 ```
 
 ### macOS
 
 #### Terminal 0 : Demarrer RabbitMQ
 
+**IMPORTANT : Lancer Docker Desktop avant d'executer les commandes Docker.**
+
+Ouvrez Docker Desktop depuis le dossier Applications et attendez que le daemon soit pret (icone stable dans la barre de menu). Sans cela, vous obtiendrez une erreur "Cannot connect to the Docker daemon".
+
 ```bash
 # Demarrer RabbitMQ avec Docker
-docker run -d --name park-rabbitmq \
-  -p 5672:5672 \
-  -p 15672:15672 \
-  -e RABBITMQ_DEFAULT_USER=guest \
-  -e RABBITMQ_DEFAULT_PASS=guest \
-  rabbitmq:3-management
+docker run -d --name park-rabbitmq  -p 5672:5672 -p 15672:15672 -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest rabbitmq:3-management
 
 # Verifier que RabbitMQ est pret (attendre ~30 secondes)
 docker logs park-rabbitmq 2>&1 | grep "started"
@@ -232,8 +231,6 @@ docker logs park-rabbitmq 2>&1 | grep "started"
 #### Terminal 1 : Compiler et Demarrer Eureka
 
 ```bash
-cd cy-land
-
 # Compiler tout le projet
 mvn clean install -DskipTests
 
@@ -247,7 +244,7 @@ Attendre le message : `EUREKA SERVER STARTED`
 #### Terminal 2 : Demarrer Gate Service
 
 ```bash
-cd cy-land/gate-service
+cd gate-service
 mvn spring-boot:run
 ```
 
@@ -256,7 +253,7 @@ Attendre le message : `GATE SERVICE READY`
 #### Terminal 3 : Demarrer Ride Service
 
 ```bash
-cd cy-land/ride-service
+cd ride-service
 mvn spring-boot:run
 ```
 
@@ -266,9 +263,11 @@ Attendre le message : `RIDE SERVICE READY`
 
 #### PowerShell/CMD 0 : Demarrer RabbitMQ
 
-```powershell
-# S'assurer que Docker Desktop est lance
+**IMPORTANT : Lancer Docker Desktop avant d'executer les commandes Docker.**
 
+Ouvrez Docker Desktop depuis le menu Demarrer et attendez que l'application soit completement chargee (icone stable dans la barre des taches). Sans cela, vous obtiendrez une erreur "error during connect: ... Is the docker daemon running?".
+
+```powershell
 # Demarrer RabbitMQ
 docker run -d --name park-rabbitmq -p 5672:5672 -p 15672:15672 -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest rabbitmq:3-management
 
@@ -279,8 +278,6 @@ docker logs park-rabbitmq
 #### PowerShell/CMD 1 : Compiler et Demarrer Eureka
 
 ```powershell
-cd cy-land
-
 # Compiler tout le projet
 mvn clean install -DskipTests
 
@@ -292,14 +289,14 @@ mvn spring-boot:run
 #### PowerShell/CMD 2 : Demarrer Gate Service
 
 ```powershell
-cd cy-land\gate-service
+cd gate-service
 mvn spring-boot:run
 ```
 
 #### PowerShell/CMD 3 : Demarrer Ride Service
 
 ```powershell
-cd cy-land\ride-service
+cd ride-service
 mvn spring-boot:run
 ```
 
@@ -794,6 +791,15 @@ docker rm park-rabbitmq
 
 ## Depannage
 
+### Docker Desktop non lance
+
+Si vous obtenez l'erreur "Cannot connect to the Docker daemon" ou "error during connect: ... Is the docker daemon running?":
+
+1. Ouvrez Docker Desktop depuis Applications (macOS) ou le menu Demarrer (Windows)
+2. Attendez que l'icone Docker soit stable (sans animation)
+3. Verifiez avec `docker info` que le daemon repond
+4. Relancez la commande `docker run`
+
 ### RabbitMQ ne demarre pas
 
 ```bash
@@ -869,6 +875,4 @@ taskkill /PID <PID> /F
 
 ## Auteurs
 
-- Paul PITIOT
-
-Projet realise dans le cadre du module JEE, ING2, GI - 2025
+Paul PITIOT
