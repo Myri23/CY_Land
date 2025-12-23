@@ -100,7 +100,7 @@ docker run -d --name park-rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-manage
 Attendre 30 secondes que RabbitMQ demarre.
 
 ### 3. Compiler le projet
-
+Terminal 0 - Compilation Projet
 ```bash
 mvn clean install -DskipTests
 ```
@@ -347,7 +347,7 @@ cy-land/
 
 ### Script de Nettoyage Complet
 
-Terminal 0 (macOS/Linux) :
+Terminal 0 - MacOS/Linux :
 
 ```bash
 # Maven clean
@@ -374,7 +374,7 @@ fi
 
 ```
 
-Terminal 0 / Windows PowerShell :
+Terminal 0 - Windows PowerShell :
 
 ```powershell
 # Nettoyage Maven + logs + fichiers generes
