@@ -17,6 +17,7 @@ import java.util.Set;
  * - Publication d'événements vers RabbitMQ
  * - Communication avec le Ride Service
  * - Snapshot de l'état pour la récupération
+ * - Réception des alertes de fermeture/réouverture des attractions
  */
 public class GateActor implements Actor {
     
@@ -27,6 +28,7 @@ public class GateActor implements Actor {
     
     // État de l'acteur
     private final Set<String> scannedTickets;
+    private final Set<String> closedRides;  // Attractions actuellement fermées
     private Instant lastScanTime;
     private boolean operational;
     
@@ -37,6 +39,7 @@ public class GateActor implements Actor {
         this.gateType = gateType;
         this.eventPublisher = eventPublisher;
         this.scannedTickets = new HashSet<>();
+        this.closedRides = new HashSet<>();
         this.operational = true;
     }
     
@@ -70,6 +73,8 @@ public class GateActor implements Actor {
         switch (message) {
             case GateMessages.ScanTicket scan -> handleScan(scan, context);
             case GateMessages.GetStatus ignored -> handleGetStatus(context);
+            case NotificationHandlerActor.RideClosedAlert alert -> handleRideClosedAlert(alert, context);
+            case NotificationHandlerActor.RideReopenedAlert alert -> handleRideReopenedAlert(alert, context);
             default -> System.out.printf("[GATE %s] Unknown message: %s%n", 
                     gateId, message.getClass().getSimpleName());
         }
@@ -101,7 +106,13 @@ public class GateActor implements Actor {
         var event = new GateMessages.VisitorEntered(ticketId, gateId);
         eventPublisher.publish(event);
         
-        System.out.printf("[GATE %s] Ticket %s ACCEPTED - Visitor entered%n", gateId, ticketId);
+        // Informer le visiteur des attractions fermées s'il y en a
+        if (!closedRides.isEmpty()) {
+            System.out.printf("[GATE %s] Ticket %s ACCEPTED - Note: %d attraction(s) closed: %s%n", 
+                    gateId, ticketId, closedRides.size(), closedRides);
+        } else {
+            System.out.printf("[GATE %s] Ticket %s ACCEPTED - Visitor entered%n", gateId, ticketId);
+        }
         
         // Notifier le Ride Service (communication inter-services)
         notifyRideService(ticketId, context);
@@ -115,6 +126,22 @@ public class GateActor implements Actor {
                 gateId, gateName, gateType, operational, scannedTickets.size(), lastScanTime
         );
         replyIfAsk(context, status);
+    }
+    
+    /**
+     * Gère l'alerte de fermeture d'une attraction.
+     */
+    private void handleRideClosedAlert(NotificationHandlerActor.RideClosedAlert alert, ActorContext context) {
+        closedRides.add(alert.rideId());
+        System.out.printf("[GATE %s] Received alert: Attraction %s is CLOSED%n", gateId, alert.rideId());
+    }
+    
+    /**
+     * Gère l'alerte de réouverture d'une attraction.
+     */
+    private void handleRideReopenedAlert(NotificationHandlerActor.RideReopenedAlert alert, ActorContext context) {
+        closedRides.remove(alert.rideId());
+        System.out.printf("[GATE %s] Received alert: Attraction %s is REOPENED%n", gateId, alert.rideId());
     }
     
     private void notifyRideService(String ticketId, ActorContext context) {
@@ -138,6 +165,10 @@ public class GateActor implements Actor {
     
     public int getVisitorCount() {
         return scannedTickets.size();
+    }
+    
+    public Set<String> getClosedRides() {
+        return Set.copyOf(closedRides);
     }
     
     // ==================== Inner Records ====================

@@ -10,6 +10,7 @@ import com.music.actor.supervision.OneForOneStrategy;
 import com.music.gate.domain.GateActor;
 import com.music.gate.domain.GateMessages;
 import com.music.gate.domain.GateType;
+import com.music.gate.domain.NotificationHandlerActor;
 import com.music.gate.messaging.GateEventPublisher;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * 
  * CORRECTION : Implémentation du compteur de messages en attente
  * pour un auto-scaling fonctionnel basé sur la charge réelle.
+ * 
+ * AJOUT : Enregistrement du notification-handler pour recevoir
+ * les notifications du Ride Service.
  */
 @Service
 public class GateService {
@@ -34,6 +38,7 @@ public class GateService {
     
     private final Map<String, ActorRef> gateActors = new ConcurrentHashMap<>();
     private AutoScalingActorPool scannerPool;
+    private ActorRef notificationHandler;
     
     public GateService(ActorSystem actorSystem, GateEventPublisher eventPublisher, ActorLogger logger) {
         this.actorSystem = actorSystem;
@@ -47,6 +52,10 @@ public class GateService {
         createGate("G1", "Entrée Principale", GateType.MAIN_GATE);
         createGate("G2", "Entrée Secondaire", GateType.MAIN_GATE);
         createGate("VIP", "Entrée VIP", GateType.VIP_GATE);
+        
+        // Créer le notification-handler pour recevoir les notifications du Ride Service
+        notificationHandler = actorSystem.actorOf("notification-handler", 
+                id -> new NotificationHandlerActor(id));
         
         // Créer un pool auto-scalable pour les scanners de tickets
         ScalingConfig config = ScalingConfig.builder()
@@ -180,6 +189,13 @@ public class GateService {
     }
     
     /**
+     * Retourne la référence vers le notification-handler.
+     */
+    public ActorRef getNotificationHandler() {
+        return notificationHandler;
+    }
+    
+    /**
      * Retourne les statistiques de charge des acteurs.
      * Utile pour le monitoring et le debugging de l'auto-scaling.
      */
@@ -206,6 +222,7 @@ public class GateService {
         System.out.println("  Gates: " + gateActors.size());
         System.out.println("  Scanner Pool: " + scannerPool.size() + " workers");
         System.out.println("  Auto-scaling: ENABLED (2-10 workers)");
+        System.out.println("  Notification Handler: ACTIVE");
         System.out.println();
         System.out.println("  ENDPOINTS:");
         System.out.println("  - POST /gate/{gateId}/scan?ticketId=XXX");
