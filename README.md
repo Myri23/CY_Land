@@ -117,7 +117,7 @@ Le tableau ci-dessous montre comment le projet repond a chaque exigence du cahie
 | Java JDK | 21+ | `java -version` |
 | Maven | 3.9+ | `mvn -version` |
 | Docker Desktop | 24+ | `docker --version` |
-| Git | 2.x | `git --version` |
+| Git | 2+ | `git --version` |
 
 ### Installation des Prerequis
 
