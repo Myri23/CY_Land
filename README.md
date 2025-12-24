@@ -155,23 +155,26 @@ curl http://localhost:8082/actuator/health
 # Liste des portes
 curl http://localhost:8081/gate
 
-# Scan asynchrone (pattern tell) / Mac
+# Scan asynchrone (pattern tell) / Commande Mac
 curl -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
-ou Windows
+# (Commande Windows)
 curl.exe -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
 
-# Scan synchrone (pattern ask) / Mac
+# Scan synchrone (pattern ask) / Commande Mac
 curl -X POST "http://localhost:8081/gate/G1/scan-sync?ticketId=T002"
-ou Windows
+# (Commande Windows)
 curl.exe -X POST "http://localhost:8081/gate/G1/scan-sync?ticketId=T002"
 
-# Bloquer une porte / Mac
+# Bloquer une porte / Commande Mac
 curl -X POST "http://localhost:8081/gate/G2/block"
-ou Windows
+# (Commande Windows)
+curl.exe -X POST "http://localhost:8081/gate/G2/block"
 
-# Debloquer une porte / Mac
+# Debloquer une porte / Commande Mac
 curl -X POST "http://localhost:8081/gate/G2/unblock"
-ou Windows
+# (Commande Windows)
+curl.exe -X POST "http://localhost:8081/gate/G2/unblock"
+
 
 ```
 
@@ -184,23 +187,23 @@ curl http://localhost:8082/rides
 # Etat d'une attraction
 curl http://localhost:8082/rides/rc/state
 
-# Rejoindre la file d'attente / Mac
+# Rejoindre la file d'attente / Commande Mac
 curl -X POST "http://localhost:8082/rides/rc/join?ticketId=V001"
-# ou Windows
+# (Commande Windows)
 
-# Demarrer un cycle / Mac
+# Demarrer un cycle / Commande Mac
 curl -X POST "http://localhost:8082/rides/rc/start-cycle"
-# ou Windows
+# (Commande Windows)
 curl.exe -X POST "http://localhost:8082/rides/rc/start-cycle"
 
-# Signaler une panne / Mac
+# Signaler une panne / Commande Mac
 curl -X POST "http://localhost:8082/rides/vr/report-fault?faultType=MECHANICAL&description=Test"
-# ou Windows
+# (Commande Windows)
 curl.exe -X POST "http://localhost:8082/rides/vr/report-fault?faultType=MECHANICAL&description=Test" 
 
-# Reparer / Mac
+# Reparer / Commande Mac
 curl -X POST "http://localhost:8082/rides/vr/repair"
-# ou Windows
+# (Commande Windows)
 curl.exe -X POST "http://localhost:8082/rides/vr/repair"
 
 ```
@@ -208,17 +211,17 @@ curl.exe -X POST "http://localhost:8082/rides/vr/repair"
 ### Tester la communication inter-services
 
 ```bash
-# Signaler une panne (le gate-service recoit la notification) / Mac
+# Signaler une panne (le gate-service recoit la notification) / Commande Mac
 curl -X POST "http://localhost:8082/rides/rc/report-fault?faultType=SAFETY&description=Test"
-# ou Windows
+# (Commande Windows)
 curl.exe -X POST "http://localhost:8082/rides/rc/report-fault?faultType=SAFETY&description=Test"
 
 # Verifier les acteurs du gate-service (notification-handler present)
 curl http://localhost:8081/actors
 
-# Reparer l'attraction / Mac
+# Reparer l'attraction / Commande Mac
 curl -X POST "http://localhost:8082/rides/rc/repair"
-# ou Windows
+# (Commande Windows)
 curl.exe -X POST "http://localhost:8082/rides/rc/report-fault?faultType=SAFETY&description=Test"
 
 ```
