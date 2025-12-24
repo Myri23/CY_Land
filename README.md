@@ -342,6 +342,7 @@ Pour l'utiliser :
 3. Selectionner le fichier JSON
 
 La collection contient plus de 30 requetes organisees par service.
+Attention, certaines requêtes sont faites exprès pour provoquer une erreur, donc bien regardée dans la rubrique "Docs" de la requête pour l'explication de chaque requête.
 
 ---
 
