@@ -155,17 +155,24 @@ curl http://localhost:8082/actuator/health
 # Liste des portes
 curl http://localhost:8081/gate
 
-# Scan asynchrone (pattern tell)
+# Scan asynchrone (pattern tell) / Mac
 curl -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
+ou Windows
+curl.exe -X POST "http://localhost:8081/gate/G1/scan?ticketId=T001"
 
-# Scan synchrone (pattern ask)
+# Scan synchrone (pattern ask) / Mac
 curl -X POST "http://localhost:8081/gate/G1/scan-sync?ticketId=T002"
+ou Windows
+curl.exe -X POST "http://localhost:8081/gate/G1/scan-sync?ticketId=T002"
 
-# Bloquer une porte
+# Bloquer une porte / Mac
 curl -X POST "http://localhost:8081/gate/G2/block"
+ou Windows
 
-# Debloquer une porte
+# Debloquer une porte / Mac
 curl -X POST "http://localhost:8081/gate/G2/unblock"
+ou Windows
+
 ```
 
 ### Tester le Ride Service
@@ -177,30 +184,43 @@ curl http://localhost:8082/rides
 # Etat d'une attraction
 curl http://localhost:8082/rides/rc/state
 
-# Rejoindre la file d'attente
+# Rejoindre la file d'attente / Mac
 curl -X POST "http://localhost:8082/rides/rc/join?ticketId=V001"
+# ou Windows
 
-# Demarrer un cycle
+# Demarrer un cycle / Mac
 curl -X POST "http://localhost:8082/rides/rc/start-cycle"
+# ou Windows
+curl.exe -X POST "http://localhost:8082/rides/rc/start-cycle"
 
-# Signaler une panne
+# Signaler une panne / Mac
 curl -X POST "http://localhost:8082/rides/vr/report-fault?faultType=MECHANICAL&description=Test"
+# ou Windows
+curl.exe -X POST "http://localhost:8082/rides/vr/report-fault?faultType=MECHANICAL&description=Test" 
 
-# Reparer
+# Reparer / Mac
 curl -X POST "http://localhost:8082/rides/vr/repair"
+# ou Windows
+curl.exe -X POST "http://localhost:8082/rides/vr/repair"
+
 ```
 
 ### Tester la communication inter-services
 
 ```bash
-# Signaler une panne (le gate-service recoit la notification)
+# Signaler une panne (le gate-service recoit la notification) / Mac
 curl -X POST "http://localhost:8082/rides/rc/report-fault?faultType=SAFETY&description=Test"
+# ou Windows
+curl.exe -X POST "http://localhost:8082/rides/rc/report-fault?faultType=SAFETY&description=Test"
 
 # Verifier les acteurs du gate-service (notification-handler present)
 curl http://localhost:8081/actors
 
-# Reparer l'attraction
+# Reparer l'attraction / Mac
 curl -X POST "http://localhost:8082/rides/rc/repair"
+# ou Windows
+curl.exe -X POST "http://localhost:8082/rides/rc/report-fault?faultType=SAFETY&description=Test"
+
 ```
 
 ### Tester la gestion des acteurs
