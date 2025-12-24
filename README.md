@@ -255,17 +255,38 @@ mvn test
 ```
 
 ### Tests par module
+## Commande Mac
 
 ```bash
 # Framework (8 tests)
 cd actor-framework && mvn test
+cd ..
 
 # Gate Service (18 tests)
 cd gate-service && mvn test
+cd..
 
 # Ride Service (16 tests)
 cd ride-service && mvn test
+cd ..
 ```
+
+## Commande Windows 
+```bash
+# Framework (8 tests)
+cd actor-framework | mvn test
+cd ..
+
+# Gate Service (18 tests)
+cd gate-service | mvn test
+cd..
+
+# Ride Service (16 tests)
+cd ride-service | mvn test
+cd ..
+```
+
+
 
 ### Resultat attendu
 
