@@ -264,7 +264,7 @@ cd ..
 
 # Gate Service (18 tests)
 cd gate-service && mvn test
-cd..
+cd ..
 
 # Ride Service (16 tests)
 cd ride-service && mvn test
@@ -279,7 +279,7 @@ cd ..
 
 # Gate Service (18 tests)
 cd gate-service | mvn test
-cd..
+cd ..
 
 # Ride Service (16 tests)
 cd ride-service | mvn test
