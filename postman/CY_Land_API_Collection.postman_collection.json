@@ -281,7 +281,7 @@
               "host": ["{{ride_url}}"],
               "path": ["rides", "rc", "start-cycle"]
             },
-            "description": "Démarre manuellement un cycle d'attraction"
+            "description": "Démarre manuellement un cycle d'attraction avec queue (ok) sans queue (erreur attendu)"
           }
         },
         {
