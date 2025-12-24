@@ -254,8 +254,8 @@ curl http://localhost:8081/actors/system/metrics
 mvn test
 ```
 
-### Tests par module
-## Commande Mac
+## Tests par module
+### Commande Mac
 
 ```bash
 # Framework (8 tests)
@@ -271,7 +271,7 @@ cd ride-service && mvn test
 cd ..
 ```
 
-## Commande Windows 
+### Commande Windows 
 ```bash
 # Framework (8 tests)
 cd actor-framework | mvn test
