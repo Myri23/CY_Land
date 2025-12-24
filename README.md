@@ -190,6 +190,8 @@ curl http://localhost:8082/rides/rc/state
 # Rejoindre la file d'attente / Commande Mac
 curl -X POST "http://localhost:8082/rides/rc/join?ticketId=V001"
 # (Commande Windows)
+curl.exe -X POST "http://localhost:8082/rides/rc/join?ticketId=V001"
+
 
 # Demarrer un cycle / Commande Mac
 curl -X POST "http://localhost:8082/rides/rc/start-cycle"
