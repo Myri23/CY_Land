@@ -291,8 +291,18 @@ cd ..
 ### Resultat attendu
 
 ```
-Tests run: 42, Failures: 0, Errors: 0
-BUILD SUCCESS
+[INFO] Reactor Summary for CY Land - Actor Framework 1.0.0-SNAPSHOT:
+[INFO]
+[INFO] CY Land - Actor Framework .......................... SUCCESS [time]
+[INFO] Actor Framework .................................... SUCCESS [time]
+[INFO] Eureka Server ...................................... SUCCESS [time]
+[INFO] Gate Service ....................................... SUCCESS [time]
+[INFO] Ride Service ....................................... SUCCESS [time]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  [time]
+[INFO] Finished at: [time]
 ```
 
 ### Description des tests
